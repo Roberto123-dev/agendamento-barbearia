@@ -1,4 +1,4 @@
-const API = "https://agendamento-barbearia-la36.onrender.com/";
+const API = "https://agendamento-barbearia-la36.onrender.com";
 
 let slotSelecionado = null;
 let dataClienteAtual = new Date();

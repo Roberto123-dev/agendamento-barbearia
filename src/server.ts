@@ -11,6 +11,54 @@ import bcrypt from "bcrypt";
 
 dotenv.config();
 
+async function initDB() {
+    await pool.query(`
+    CREATE TABLE IF NOT EXISTS barbeiros (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      senha TEXT NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
+    CREATE TABLE IF NOT EXISTS servicos (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      duracao_minutos INTEGER NOT NULL,
+      preco REAL NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS horarios_trabalho (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      dia_semana INTEGER NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS agendamentos (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      servico_id INTEGER NOT NULL REFERENCES servicos(id),
+      cliente_nome TEXT NOT NULL,
+      cliente_telefone TEXT NOT NULL,
+      data TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'confirmado',
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
+    CREATE TABLE IF NOT EXISTS bloqueios (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      data TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL,
+      motivo TEXT
+    );
+  `);
+    console.log("✅ Tabelas verificadas/criadas");
+}
+
 async function seedSeVazio() {
     const { rows } = await pool.query(
         "SELECT COUNT(*) as total FROM barbeiros",
@@ -72,6 +120,7 @@ app.get("/health", (req, res) => {
 
 app.listen(PORT, async () => {
     console.log(`Servidor rodando na porta ${PORT}`);
+    await initDB();
     await seedSeVazio();
 });
 

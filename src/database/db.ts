@@ -71,6 +71,4 @@ async function initDB() {
     console.log("✅ Tabelas verificadas/criadas");
 }
 
-initDB().catch(console.error);
-
 export default pool;

@@ -1,3 +1,4 @@
+// PAINEL.JS
 const API =
     window.location.hostname === "localhost"
         ? "http://localhost:3000"
@@ -18,8 +19,36 @@ const headers = {
 // Estado do calendário do painel (por dia)
 let dataAtual = new Date();
 let dataSelecionada = new Date();
+let diasComAgendamento = new Set(); // dias do mês atual que têm agendamentos
+let horariosEditados = {}; // { 1: { ativo: true, inicio: "09:00", fim: "18:00" }, ... }
 
 // ─── CALENDÁRIO POR DIA ───────────────────────────────
+
+async function carregarDiasComAgendamento() {
+    const ano = dataAtual.getFullYear();
+    const mes = String(dataAtual.getMonth() + 1).padStart(2, "0");
+
+    try {
+        const res = await fetch(
+            `${API}/agendamentos/dias-com-agendamento?barbeiro_id=${barbeiro.id}&ano=${ano}&mes=${mes}`,
+            { headers },
+        );
+        const dados = await res.json();
+        diasComAgendamento = new Set(dados.dias);
+    } catch {
+        diasComAgendamento = new Set();
+    }
+}
+
+async function mudarMes(delta) {
+    dataAtual = new Date(
+        dataAtual.getFullYear(),
+        dataAtual.getMonth() + delta,
+        1,
+    );
+    await carregarDiasComAgendamento();
+    renderCalendario();
+}
 
 function toggleCalendarioPainel() {
     const cal = document.getElementById("calendario-painel");
@@ -98,6 +127,7 @@ function renderCalendario() {
             dataSelecionada &&
             data.toDateString() === dataSelecionada.toDateString();
         const domingo = diaSemana === 0;
+        const temAgendamento = diasComAgendamento.has(dia);
 
         const classes = [
             "dia-btn",
@@ -109,10 +139,28 @@ function renderCalendario() {
             .join(" ");
 
         container.innerHTML += `
-            <button class="${classes}"
-                ${passado || domingo ? "disabled" : ""}
-                onclick="selecionarData(${ano}, ${mes}, ${dia})"
-            >${dia}</button>`;
+        <button class="${classes}"
+            ${passado || domingo ? "disabled" : ""}
+            onclick="selecionarData(${ano}, ${mes}, ${dia})"
+            style="position:relative;"
+        >
+            ${dia}
+            ${
+                temAgendamento
+                    ? `<span style="
+                position:absolute;
+                bottom:3px;
+                left:50%;
+                transform:translateX(-50%);
+                width:5px;
+                height:5px;
+                border-radius:50%;
+                background:#4caf50;
+                display:block;
+            "></span>`
+                    : ""
+            }
+        </button>`;
     }
 }
 
@@ -175,6 +223,7 @@ async function init() {
     document.getElementById("data-selecionada-texto").textContent =
         dataSelecionada.toLocaleDateString("pt-BR", opcoes);
 
+    await carregarDiasComAgendamento();
     renderCalendario();
     carregarAgendamentos();
 }
@@ -283,6 +332,8 @@ async function atualizarStatus(id, acao) {
     const res = await fetch(url, { method: "PATCH", headers });
 
     if (res.ok) {
+        await carregarDiasComAgendamento(); // 👈 mantém pontos atualizados
+        renderCalendario();
         carregarAgendamentos();
     } else {
         const dados = await res.json();
@@ -483,21 +534,153 @@ function trocarAba(aba) {
         aba === "dia" ? "block" : "none";
     document.getElementById("filtro-periodo").style.display =
         aba === "periodo" ? "block" : "none";
+    document.getElementById("filtro-horarios").style.display =
+        aba === "horarios" ? "block" : "none";
 
-    document.getElementById("aba-dia").style.borderBottomColor =
-        aba === "dia" ? "#c9a84c" : "transparent";
-    document.getElementById("aba-dia").style.color =
-        aba === "dia" ? "#c9a84c" : "#aaa";
-    document.getElementById("aba-periodo").style.borderBottomColor =
-        aba === "periodo" ? "#c9a84c" : "transparent";
-    document.getElementById("aba-periodo").style.color =
-        aba === "periodo" ? "#c9a84c" : "#aaa";
+    ["dia", "periodo", "horarios"].forEach((a) => {
+        const btn = document.getElementById(`aba-${a}`);
+        if (!btn) return;
+        btn.style.borderBottomColor = a === aba ? "#c9a84c" : "transparent";
+        btn.style.color = a === aba ? "#c9a84c" : "#aaa";
+    });
 
     const resumoDia = document.getElementById("resumo-dia");
     const lista = document.getElementById("lista");
 
     if (resumoDia) resumoDia.style.display = aba === "dia" ? "grid" : "none";
-    if (lista) lista.innerHTML = "";
+    if (lista && aba !== "dia") lista.innerHTML = "";
+
+    if (aba === "horarios") carregarHorarios();
+}
+
+const DIAS_SEMANA = [
+    { num: 0, nome: "Domingo" },
+    { num: 1, nome: "Segunda-feira" },
+    { num: 2, nome: "Terça-feira" },
+    { num: 3, nome: "Quarta-feira" },
+    { num: 4, nome: "Quinta-feira" },
+    { num: 5, nome: "Sexta-feira" },
+    { num: 6, nome: "Sábado" },
+];
+
+async function carregarHorarios() {
+    const res = await fetch(`${API}/barbeiros/${barbeiro.id}/horarios`, {
+        headers,
+    });
+    const rows = await res.json();
+
+    // Monta estado: começa tudo inativo
+    horariosEditados = {};
+    DIAS_SEMANA.forEach(({ num }) => {
+        horariosEditados[num] = { ativo: false, inicio: "09:00", fim: "18:00" };
+    });
+
+    // Marca os que existem no banco
+    rows.forEach((h) => {
+        horariosEditados[h.dia_semana] = {
+            ativo: true,
+            inicio: h.hora_inicio,
+            fim: h.hora_fim,
+        };
+    });
+
+    renderHorarios();
+}
+
+function renderHorarios() {
+    const container = document.getElementById("lista-horarios");
+    container.innerHTML = "";
+
+    DIAS_SEMANA.forEach(({ num, nome }) => {
+        const h = horariosEditados[num];
+        const item = document.createElement("div");
+        item.style.cssText = `
+            background:#1a1a1a;border:1px solid #333;border-radius:10px;
+            padding:16px;margin-bottom:10px;
+        `;
+        item.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:bold;color:${num === 0 ? "#c0392b" : "#f0f0f0"}">
+                    ${nome}
+                </span>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <span style="font-size:0.85rem;color:#aaa;">
+                        ${h.ativo ? "Trabalhando" : "Folga"}
+                    </span>
+                    <div onclick="toggleDia(${num})" style="
+                        width:44px;height:24px;border-radius:12px;
+                        background:${h.ativo ? "#c9a84c" : "#333"};
+                        position:relative;cursor:pointer;transition:background 0.2s;
+                    ">
+                        <div style="
+                            position:absolute;top:3px;
+                            left:${h.ativo ? "23px" : "3px"};
+                            width:18px;height:18px;border-radius:50%;
+                            background:#fff;transition:left 0.2s;
+                        "></div>
+                    </div>
+                </label>
+            </div>
+            ${
+                h.ativo
+                    ? `
+            <div style="display:flex;gap:12px;margin-top:12px;">
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem;color:#aaa;display:block;margin-bottom:4px;">
+                        INÍCIO
+                    </label>
+                    <input type="time" value="${h.inicio}"
+                        onchange="atualizarHorario(${num}, 'inicio', this.value)"
+                        style="width:100%;padding:8px 12px;background:#111;border:1px solid #444;
+                               border-radius:6px;color:#f0f0f0;font-size:0.95rem;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem;color:#aaa;display:block;margin-bottom:4px;">
+                        FIM
+                    </label>
+                    <input type="time" value="${h.fim}"
+                        onchange="atualizarHorario(${num}, 'fim', this.value)"
+                        style="width:100%;padding:8px 12px;background:#111;border:1px solid #444;
+                               border-radius:6px;color:#f0f0f0;font-size:0.95rem;">
+                </div>
+            </div>`
+                    : ""
+            }
+        `;
+        container.appendChild(item);
+    });
+}
+
+function toggleDia(num) {
+    horariosEditados[num].ativo = !horariosEditados[num].ativo;
+    renderHorarios();
+}
+
+function atualizarHorario(num, campo, valor) {
+    horariosEditados[num][campo === "inicio" ? "inicio" : "fim"] = valor;
+}
+
+async function salvarHorarios() {
+    const horarios = Object.entries(horariosEditados)
+        .filter(([, h]) => h.ativo)
+        .map(([dia, h]) => ({
+            dia_semana: parseInt(dia),
+            hora_inicio: h.inicio,
+            hora_fim: h.fim,
+        }));
+
+    const res = await fetch(`${API}/barbeiros/${barbeiro.id}/horarios`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ horarios }),
+    });
+
+    const dados = await res.json();
+    if (res.ok) {
+        alert("✅ Horários salvos!");
+    } else {
+        alert(dados.erro || "Erro ao salvar");
+    }
 }
 
 // ─── CALENDÁRIOS DO PERÍODO ───────────────────────────

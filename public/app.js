@@ -1,3 +1,4 @@
+// APP.JS
 const API =
     window.location.hostname === "localhost"
         ? "http://localhost:3000"
@@ -6,6 +7,7 @@ const API =
 let slotSelecionado = null;
 let dataClienteAtual = new Date();
 let dataClienteSelecionada = null;
+let diasTrabalho = new Set(); // dias da semana (0-6) que o barbeiro trabalha
 
 // ─── CALENDÁRIO CLIENTE ───────────────────────────────
 
@@ -89,6 +91,8 @@ function renderCalendarioCliente() {
             dataClienteSelecionada &&
             data.toDateString() === dataClienteSelecionada.toDateString();
         const domingo = diaSemana === 0;
+        const temDisponibilidade = diasTrabalho.has(diaSemana);
+        const desabilitado = passado || domingo || !temDisponibilidade;
 
         const classes = [
             "dia-btn",
@@ -100,13 +104,56 @@ function renderCalendarioCliente() {
             .join(" ");
 
         container.innerHTML += `
-      <button
-        class="${classes}"
-        ${passado || domingo ? "disabled" : ""}
-        onclick="selecionarDataCliente(${ano}, ${mes}, ${dia})"
-      >${dia}</button>
-    `;
+        <button class="${classes}"
+            ${desabilitado ? "disabled" : ""}
+            onclick="selecionarDataCliente(${ano}, ${mes}, ${dia})"
+            style="position:relative;"
+        >
+            ${dia}
+            ${
+                !passado && !domingo && temDisponibilidade
+                    ? `
+                <span style="
+                    position:absolute;bottom:3px;left:50%;
+                    transform:translateX(-50%);
+                    width:5px;height:5px;border-radius:50%;
+                    background:#4caf50;display:block;
+                "></span>`
+                    : ""
+            }
+            ${
+                !passado && !domingo && !temDisponibilidade
+                    ? `
+                <span style="
+                    position:absolute;bottom:3px;left:50%;
+                    transform:translateX(-50%);
+                    width:5px;height:5px;border-radius:50%;
+                    background:#c0392b;display:block;
+                "></span>`
+                    : ""
+            }
+        </button>`;
     }
+}
+
+async function carregarDiasTrabalho() {
+    const barbeiro_id = document.getElementById("barbeiro").value;
+
+    if (!barbeiro_id) {
+        diasTrabalho = new Set();
+        renderCalendarioCliente();
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API}/barbeiros/${barbeiro_id}/horarios`);
+        const rows = await res.json();
+        diasTrabalho = new Set(rows.map((h) => h.dia_semana));
+    } catch {
+        diasTrabalho = new Set();
+    }
+
+    renderCalendarioCliente();
 }
 
 function selecionarDataCliente(ano, mes, dia) {
@@ -171,6 +218,7 @@ async function init() {
         selServico.appendChild(opt);
     });
 
+    await carregarDiasTrabalho();
     renderCalendarioCliente();
 
     // Configura botão WhatsApp
@@ -290,7 +338,10 @@ function resetarFormulario() {
     renderCalendarioCliente();
 }
 
-document.getElementById("barbeiro").addEventListener("change", carregarSlots);
+document.getElementById("barbeiro").addEventListener("change", () => {
+    carregarDiasTrabalho(); // atualiza calendário com pontos
+    carregarSlots(); // atualiza slots disponíveis
+});
 document.getElementById("servico").addEventListener("change", carregarSlots);
 document
     .getElementById("cliente-nome")

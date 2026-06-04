@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import pool from "../database/db";
 import bcrypt from "bcrypt";
+import { AuthRequest } from "../middlewares/auth";
 
 export async function listarBarbeiros(req: Request, res: Response) {
     const { rows } = await pool.query(`
@@ -154,4 +155,38 @@ export async function deletarBarbeiro(req: Request, res: Response) {
     } finally {
         client.release();
     }
+}
+
+export async function salvarHorarios(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+    const { horarios } = req.body;
+    // horarios: [{ dia_semana: 1, hora_inicio: "09:00", hora_fim: "18:00" }, ...]
+
+    if (!Array.isArray(horarios)) {
+        res.status(400).json({ erro: "horarios deve ser um array" });
+        return;
+    }
+
+    // Valida cada item
+    for (const h of horarios) {
+        if (h.dia_semana === undefined || !h.hora_inicio || !h.hora_fim) {
+            res.status(400).json({ erro: "Dados inválidos" });
+            return;
+        }
+    }
+
+    // Substitui todos os horários do barbeiro
+    await pool.query("DELETE FROM horarios_trabalho WHERE barbeiro_id = $1", [
+        id,
+    ]);
+
+    for (const h of horarios) {
+        await pool.query(
+            `INSERT INTO horarios_trabalho (barbeiro_id, dia_semana, hora_inicio, hora_fim)
+             VALUES ($1, $2, $3, $4)`,
+            [id, h.dia_semana, h.hora_inicio, h.hora_fim],
+        );
+    }
+
+    res.json({ mensagem: "Horários salvos com sucesso" });
 }

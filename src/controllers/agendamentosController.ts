@@ -1,3 +1,4 @@
+// AGENDAMENTOSCONTROLLER.TS
 import { Request, Response } from "express";
 import pool from "../database/db";
 import { AuthRequest } from "../middlewares/auth";
@@ -312,4 +313,34 @@ export async function resumoPeriodo(req: AuthRequest, res: Response) {
         agendamentos: rows,
         resumo: { total, concluidos, cancelados, receita },
     });
+}
+
+export async function diasComAgendamento(req: AuthRequest, res: Response) {
+    const { barbeiro_id, ano, mes } = req.query as Record<string, string>;
+
+    if (!barbeiro_id || !ano || !mes) {
+        res.status(400).json({
+            erro: "barbeiro_id, ano e mes são obrigatórios",
+        });
+        return;
+    }
+
+    // Primeiro e último dia do mês
+    const dataInicio = `${ano}-${mes.padStart(2, "0")}-01`;
+    const dataFim = new Date(Number(ano), Number(mes), 0)
+        .toISOString()
+        .split("T")[0];
+
+    const { rows } = await pool.query(
+        `SELECT DISTINCT CAST(SPLIT_PART(data, '-', 3) AS INT) AS dia
+         FROM agendamentos
+         WHERE barbeiro_id = $1
+           AND data >= $2
+           AND data <= $3
+           AND status != 'cancelado'
+         ORDER BY dia`,
+        [barbeiro_id, dataInicio, dataFim],
+    );
+
+    res.json({ dias: rows.map((r) => r.dia) });
 }

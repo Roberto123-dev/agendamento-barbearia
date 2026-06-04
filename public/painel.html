@@ -1,3 +1,4 @@
+<!-- PAINEL.HTML -->
 <!doctype html>
 <html lang="pt-BR">
     <head>
@@ -465,6 +466,21 @@
                 >
                     📊 Por período
                 </button>
+                <button
+                    id="aba-horarios"
+                    onclick="trocarAba('horarios')"
+                    style="
+                        padding: 10px 20px;
+                        background: transparent;
+                        border: none;
+                        border-bottom: 2px solid transparent;
+                        color: #aaa;
+                        cursor: pointer;
+                        font-size: 0.95rem;
+                    "
+                >
+                    ⚙️ Horários
+                </button>
             </div>
 
             <!-- ═══ ABA DIA ═══ -->
@@ -789,6 +805,33 @@
                     </div>
                     <div class="lista-agendamentos" id="lista-periodo"></div>
                 </div>
+            </div>
+            <!-- ═══ ABA HORÁRIOS ═══ -->
+            <div id="filtro-horarios" style="display: none">
+                <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px">
+                    Defina os dias e horários em que você trabalha. Os clientes
+                    só poderão agendar nos dias ativos.
+                </p>
+
+                <div id="lista-horarios"></div>
+
+                <button
+                    onclick="salvarHorarios()"
+                    style="
+                        width: 100%;
+                        padding: 14px;
+                        margin-top: 8px;
+                        background: #c9a84c;
+                        border: none;
+                        border-radius: 8px;
+                        color: #000;
+                        font-weight: bold;
+                        font-size: 1rem;
+                        cursor: pointer;
+                    "
+                >
+                    💾 Salvar horários
+                </button>
             </div>
         </main>
 

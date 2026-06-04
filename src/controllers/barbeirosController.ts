@@ -1,60 +1,43 @@
 import { Request, Response } from "express";
-import db from "../database/db";
+import pool from "../database/db";
 import bcrypt from "bcrypt";
 
-// Listar todos os barbeiros ativos
-export function listarBarbeiros(req: Request, res: Response) {
-    const barbeiros = db
-        .prepare(
-            `
+export async function listarBarbeiros(req: Request, res: Response) {
+    const { rows } = await pool.query(`
     SELECT id, nome, email, ativo, criado_em
-    FROM barbeiros
-    WHERE ativo = 1
-  `,
-        )
-        .all();
-
-    res.json(barbeiros);
+    FROM barbeiros WHERE ativo = 1 ORDER BY nome
+  `);
+    res.json(rows);
 }
 
-// Buscar barbeiro por ID
-export function buscarBarbeiro(req: Request, res: Response) {
+export async function buscarBarbeiro(req: Request, res: Response) {
     const { id } = req.params;
-
-    const barbeiro = db
-        .prepare(
-            `
+    const { rows } = await pool.query(
+        `
     SELECT id, nome, email, ativo, criado_em
-    FROM barbeiros
-    WHERE id = ? AND ativo = 1
+    FROM barbeiros WHERE id = $1 AND ativo = 1
   `,
-        )
-        .get(id);
+        [id],
+    );
 
-    if (!barbeiro) {
+    if (rows.length === 0) {
         res.status(404).json({ erro: "Barbeiro não encontrado" });
         return;
     }
-
-    res.json(barbeiro);
+    res.json(rows[0]);
 }
 
-// Buscar horários de trabalho do barbeiro
-export function buscarHorarios(req: Request, res: Response) {
+export async function buscarHorarios(req: Request, res: Response) {
     const { id } = req.params;
-
-    const horarios = db
-        .prepare(
-            `
+    const { rows } = await pool.query(
+        `
     SELECT dia_semana, hora_inicio, hora_fim
     FROM horarios_trabalho
-    WHERE barbeiro_id = ?
-    ORDER BY dia_semana
+    WHERE barbeiro_id = $1 ORDER BY dia_semana
   `,
-        )
-        .all(id);
-
-    res.json(horarios);
+        [id],
+    );
+    res.json(rows);
 }
 
 export async function cadastrarBarbeiro(req: Request, res: Response) {
@@ -65,55 +48,55 @@ export async function cadastrarBarbeiro(req: Request, res: Response) {
         return;
     }
 
-    const existe = db
-        .prepare(
-            `
-    SELECT id FROM barbeiros WHERE email = ?
-  `,
-        )
-        .get(email);
+    const existe = await pool.query(
+        "SELECT id FROM barbeiros WHERE email = $1",
+        [email],
+    );
 
-    if (existe) {
+    if (existe.rows.length > 0) {
         res.status(409).json({ erro: "Email já cadastrado" });
         return;
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
 
-    // Usa transação para garantir que barbeiro e horários são inseridos juntos
-    const inserir = db.transaction(() => {
-        const resultado = db
-            .prepare(
-                `
-      INSERT INTO barbeiros (nome, email, senha) VALUES (?, ?, ?)
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const { rows } = await client.query(
+            `
+      INSERT INTO barbeiros (nome, email, senha) VALUES ($1, $2, $3) RETURNING id
     `,
-            )
-            .run(nome, email, senhaHash);
+            [nome, email, senhaHash],
+        );
 
-        const barbeiro_id = resultado.lastInsertRowid;
+        const barbeiro_id = rows[0].id;
 
-        const inserirHorario = db.prepare(`
-      INSERT INTO horarios_trabalho (barbeiro_id, dia_semana, hora_inicio, hora_fim)
-      VALUES (?, ?, ?, ?)
-    `);
-
-        // Segunda a sábado, 9h às 18h
         for (let dia = 1; dia <= 6; dia++) {
-            inserirHorario.run(barbeiro_id, dia, "09:00", "18:00");
+            await client.query(
+                `
+        INSERT INTO horarios_trabalho (barbeiro_id, dia_semana, hora_inicio, hora_fim)
+        VALUES ($1, $2, $3, $4)
+      `,
+                [barbeiro_id, dia, "09:00", "18:00"],
+            );
         }
 
-        return barbeiro_id;
-    });
-
-    const barbeiro_id = inserir();
-
-    res.status(201).json({
-        id: barbeiro_id,
-        mensagem: "Barbeiro cadastrado com sucesso",
-    });
+        await client.query("COMMIT");
+        res.status(201).json({
+            id: barbeiro_id,
+            mensagem: "Barbeiro cadastrado com sucesso",
+        });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
 }
 
-export function deletarBarbeiro(req: Request, res: Response) {
+export async function deletarBarbeiro(req: Request, res: Response) {
     const id = parseInt(
         Array.isArray(req.params.id) ? req.params.id[0] : req.params.id,
     );
@@ -123,48 +106,52 @@ export function deletarBarbeiro(req: Request, res: Response) {
         return;
     }
 
-    const barbeiro = db
-        .prepare(
-            `
-    SELECT id FROM barbeiros WHERE id = ? AND ativo = 1
-  `,
-        )
-        .get(id);
+    const { rows } = await pool.query(
+        "SELECT id FROM barbeiros WHERE id = $1 AND ativo = 1",
+        [id],
+    );
 
-    if (!barbeiro) {
+    if (rows.length === 0) {
         res.status(404).json({ erro: "Barbeiro não encontrado" });
         return;
     }
 
     const hoje = new Date().toISOString().split("T")[0];
-
-    const { total } = db
-        .prepare(
-            `
+    const { rows: agendamentos } = await pool.query(
+        `
     SELECT COUNT(*) as total FROM agendamentos
-    WHERE barbeiro_id = ? AND data >= ? AND status = 'confirmado'
+    WHERE barbeiro_id = $1 AND data >= $2 AND status = 'confirmado'
   `,
-        )
-        .get(id, hoje) as { total: number };
+        [id, hoje],
+    );
 
-    if (total > 0) {
+    if (parseInt(agendamentos[0].total) > 0) {
         res.status(409).json({
-            erro: `Barbeiro possui ${total} agendamento(s) confirmado(s). Cancele-os antes de deletar.`,
+            erro: `Barbeiro possui ${agendamentos[0].total} agendamento(s) confirmado(s). Cancele-os antes de deletar.`,
         });
         return;
     }
 
-    // Transação — remove tudo relacionado ao barbeiro
-    const deletar = db.transaction(() => {
-        db.prepare(`DELETE FROM horarios_trabalho WHERE barbeiro_id = ?`).run(
-            id,
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        await client.query(
+            "DELETE FROM horarios_trabalho WHERE barbeiro_id = $1",
+            [id],
         );
-        db.prepare(`DELETE FROM bloqueios WHERE barbeiro_id = ?`).run(id);
-        db.prepare(`DELETE FROM agendamentos WHERE barbeiro_id = ?`).run(id);
-        db.prepare(`DELETE FROM barbeiros WHERE id = ?`).run(id);
-    });
-
-    deletar();
-
-    res.json({ mensagem: "Barbeiro removido com sucesso" });
+        await client.query("DELETE FROM bloqueios WHERE barbeiro_id = $1", [
+            id,
+        ]);
+        await client.query("DELETE FROM agendamentos WHERE barbeiro_id = $1", [
+            id,
+        ]);
+        await client.query("DELETE FROM barbeiros WHERE id = $1", [id]);
+        await client.query("COMMIT");
+        res.json({ mensagem: "Barbeiro removido com sucesso" });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
 }

@@ -1,64 +1,70 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { Pool } from "pg";
+import dotenv from "dotenv";
 
-const dbPath = path.resolve(__dirname, "../../barbearia.db");
-const db = new Database(dbPath);
+dotenv.config();
 
-// Ativa chaves estrangeiras
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl:
+        process.env.NODE_ENV === "production"
+            ? { rejectUnauthorized: false }
+            : false,
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS barbeiros (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    senha TEXT NOT NULL,
-    ativo INTEGER NOT NULL DEFAULT 1,
-    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+// Cria as tabelas se não existirem
+async function initDB() {
+    await pool.query(`
+    CREATE TABLE IF NOT EXISTS barbeiros (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      senha TEXT NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
 
-  CREATE TABLE IF NOT EXISTS servicos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    duracao_minutos INTEGER NOT NULL,
-    preco REAL NOT NULL,
-    ativo INTEGER NOT NULL DEFAULT 1
-  );
+    CREATE TABLE IF NOT EXISTS servicos (
+      id SERIAL PRIMARY KEY,
+      nome TEXT NOT NULL,
+      duracao_minutos INTEGER NOT NULL,
+      preco REAL NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1
+    );
 
-  CREATE TABLE IF NOT EXISTS horarios_trabalho (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    barbeiro_id INTEGER NOT NULL,
-    dia_semana INTEGER NOT NULL, -- 0=domingo, 6=sábado
-    hora_inicio TEXT NOT NULL,   -- ex: "09:00"
-    hora_fim TEXT NOT NULL,      -- ex: "18:00"
-    FOREIGN KEY (barbeiro_id) REFERENCES barbeiros(id)
-  );
+    CREATE TABLE IF NOT EXISTS horarios_trabalho (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      dia_semana INTEGER NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL
+    );
 
-  CREATE TABLE IF NOT EXISTS agendamentos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    barbeiro_id INTEGER NOT NULL,
-    servico_id INTEGER NOT NULL,
-    cliente_nome TEXT NOT NULL,
-    cliente_telefone TEXT NOT NULL,
-    data TEXT NOT NULL,          -- ex: "2025-06-10"
-    hora_inicio TEXT NOT NULL,   -- ex: "09:00"
-    hora_fim TEXT NOT NULL,      -- ex: "09:45"
-    status TEXT NOT NULL DEFAULT 'confirmado', -- confirmado | cancelado | concluido
-    criado_em TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (barbeiro_id) REFERENCES barbeiros(id),
-    FOREIGN KEY (servico_id) REFERENCES servicos(id)
-  );
+    CREATE TABLE IF NOT EXISTS agendamentos (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      servico_id INTEGER NOT NULL REFERENCES servicos(id),
+      cliente_nome TEXT NOT NULL,
+      cliente_telefone TEXT NOT NULL,
+      data TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'confirmado',
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
 
-  CREATE TABLE IF NOT EXISTS bloqueios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    barbeiro_id INTEGER NOT NULL,
-    data TEXT NOT NULL,          -- ex: "2025-06-15"
-    hora_inicio TEXT NOT NULL,
-    hora_fim TEXT NOT NULL,
-    motivo TEXT,
-    FOREIGN KEY (barbeiro_id) REFERENCES barbeiros(id)
-  );
-`);
+    CREATE TABLE IF NOT EXISTS bloqueios (
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id),
+      data TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL,
+      motivo TEXT
+    );
+  `);
 
-export default db;
+    console.log("✅ Tabelas verificadas/criadas");
+}
+
+initDB().catch(console.error);
+
+export default pool;

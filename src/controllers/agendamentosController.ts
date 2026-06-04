@@ -1,28 +1,12 @@
 import { Request, Response } from "express";
-import db from "../database/db";
+import pool from "../database/db";
 import { AuthRequest } from "../middlewares/auth";
 
-interface Servico {
-    duracao_minutos: number;
-}
-
-interface Agendamento {
-    hora_inicio: string;
-    hora_fim: string;
-}
-
-interface HorarioTrabalho {
-    hora_inicio: string;
-    hora_fim: string;
-}
-
-// Converte "09:00" em minutos (540)
 function horaParaMinutos(hora: string): number {
     const [h, m] = hora.split(":").map(Number);
     return h * 60 + m;
 }
 
-// Converte minutos (540) em "09:00"
 function minutosParaHora(minutos: number): string {
     const h = Math.floor(minutos / 60)
         .toString()
@@ -31,8 +15,7 @@ function minutosParaHora(minutos: number): string {
     return `${h}:${m}`;
 }
 
-// Retorna os slots disponíveis de um barbeiro em uma data
-export function buscarSlotsDisponiveis(req: Request, res: Response) {
+export async function buscarSlotsDisponiveis(req: Request, res: Response) {
     const { barbeiro_id, data, servico_id } = req.query as Record<
         string,
         string
@@ -45,91 +28,69 @@ export function buscarSlotsDisponiveis(req: Request, res: Response) {
         return;
     }
 
-    // Busca duração do serviço
-    const servico = db
-        .prepare(
-            `
-    SELECT duracao_minutos FROM servicos WHERE id = ?
-  `,
-        )
-        .get(servico_id) as Servico | undefined;
-
-    if (!servico) {
+    const { rows: servicos } = await pool.query(
+        "SELECT duracao_minutos FROM servicos WHERE id = $1",
+        [servico_id],
+    );
+    if (servicos.length === 0) {
         res.status(404).json({ erro: "Serviço não encontrado" });
         return;
     }
 
-    // Descobre o dia da semana da data informada (0=domingo, 6=sábado)
+    const duracao = servicos[0].duracao_minutos;
     const diaSemana = new Date(data + "T12:00:00").getDay();
 
-    // Busca horário de trabalho do barbeiro nesse dia
-    const horarioTrabalho = db
-        .prepare(
-            `
-    SELECT hora_inicio, hora_fim
-    FROM horarios_trabalho
-    WHERE barbeiro_id = ? AND dia_semana = ?
+    const { rows: horarios } = await pool.query(
+        `
+    SELECT hora_inicio, hora_fim FROM horarios_trabalho
+    WHERE barbeiro_id = $1 AND dia_semana = $2
   `,
-        )
-        .get(barbeiro_id, diaSemana) as HorarioTrabalho | undefined;
+        [barbeiro_id, diaSemana],
+    );
 
-    if (!horarioTrabalho) {
+    if (horarios.length === 0) {
         res.json({ slots: [], mensagem: "Barbeiro não trabalha neste dia" });
         return;
     }
 
-    // Busca agendamentos existentes nessa data
-    const agendamentos = db
-        .prepare(
-            `
-    SELECT hora_inicio, hora_fim
-    FROM agendamentos
-    WHERE barbeiro_id = ? AND data = ? AND status != 'cancelado'
+    const { rows: agendamentos } = await pool.query(
+        `
+    SELECT hora_inicio, hora_fim FROM agendamentos
+    WHERE barbeiro_id = $1 AND data = $2 AND status != 'cancelado'
   `,
-        )
-        .all(barbeiro_id, data) as Agendamento[];
+        [barbeiro_id, data],
+    );
 
-    // Busca bloqueios nessa data
-    const bloqueios = db
-        .prepare(
-            `
-    SELECT hora_inicio, hora_fim
-    FROM bloqueios
-    WHERE barbeiro_id = ? AND data = ?
+    const { rows: bloqueios } = await pool.query(
+        `
+    SELECT hora_inicio, hora_fim FROM bloqueios
+    WHERE barbeiro_id = $1 AND data = $2
   `,
-        )
-        .all(barbeiro_id, data) as Agendamento[];
+        [barbeiro_id, data],
+    );
 
-    // Todos os horários ocupados (agendamentos + bloqueios)
     const ocupados = [...agendamentos, ...bloqueios];
-
-    // Gera todos os slots possíveis
-    const inicio = horaParaMinutos(horarioTrabalho.hora_inicio);
-    const fim = horaParaMinutos(horarioTrabalho.hora_fim);
-    const duracao = servico.duracao_minutos;
+    const inicio = horaParaMinutos(horarios[0].hora_inicio);
+    const fim = horaParaMinutos(horarios[0].hora_fim);
     const slots: string[] = [];
 
     for (let minuto = inicio; minuto + duracao <= fim; minuto += 30) {
         const slotInicio = minuto;
         const slotFim = minuto + duracao;
 
-        // Verifica se o slot conflita com algum ocupado
         const conflito = ocupados.some((o) => {
-            const ocupadoInicio = horaParaMinutos(o.hora_inicio);
-            const ocupadoFim = horaParaMinutos(o.hora_fim);
-            return slotInicio < ocupadoFim && slotFim > ocupadoInicio;
+            const oInicio = horaParaMinutos(o.hora_inicio);
+            const oFim = horaParaMinutos(o.hora_fim);
+            return slotInicio < oFim && slotFim > oInicio;
         });
 
-        if (!conflito) {
-            slots.push(minutosParaHora(slotInicio));
-        }
+        if (!conflito) slots.push(minutosParaHora(slotInicio));
     }
 
     res.json({ slots });
 }
 
-// Criar agendamento
-export function criarAgendamento(req: Request, res: Response) {
+export async function criarAgendamento(req: Request, res: Response) {
     const {
         barbeiro_id,
         servico_id,
@@ -151,52 +112,40 @@ export function criarAgendamento(req: Request, res: Response) {
         return;
     }
 
-    // Busca duração do serviço
-    const servico = db
-        .prepare(
-            `
-    SELECT duracao_minutos FROM servicos WHERE id = ?
-  `,
-        )
-        .get(servico_id) as Servico | undefined;
-
-    if (!servico) {
+    const { rows: servicos } = await pool.query(
+        "SELECT duracao_minutos FROM servicos WHERE id = $1",
+        [servico_id],
+    );
+    if (servicos.length === 0) {
         res.status(404).json({ erro: "Serviço não encontrado" });
         return;
     }
 
     const horaFim = minutosParaHora(
-        horaParaMinutos(hora_inicio) + servico.duracao_minutos,
+        horaParaMinutos(hora_inicio) + servicos[0].duracao_minutos,
     );
 
-    // Verifica conflito antes de inserir (proteção contra race condition)
-    const conflito = db
-        .prepare(
-            `
+    const { rows: conflito } = await pool.query(
+        `
     SELECT id FROM agendamentos
-    WHERE barbeiro_id = ?
-      AND data = ?
-      AND status != 'cancelado'
-      AND hora_inicio < ?
-      AND hora_fim > ?
+    WHERE barbeiro_id = $1 AND data = $2 AND status != 'cancelado'
+    AND hora_inicio < $3 AND hora_fim > $4
   `,
-        )
-        .get(barbeiro_id, data, horaFim, hora_inicio);
+        [barbeiro_id, data, horaFim, hora_inicio],
+    );
 
-    if (conflito) {
+    if (conflito.length > 0) {
         res.status(409).json({ erro: "Horário não está mais disponível" });
         return;
     }
 
-    // Insere o agendamento
-    const resultado = db
-        .prepare(
-            `
-    INSERT INTO agendamentos (barbeiro_id, servico_id, cliente_nome, cliente_telefone, data, hora_inicio, hora_fim)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    const { rows } = await pool.query(
+        `
+    INSERT INTO agendamentos
+    (barbeiro_id, servico_id, cliente_nome, cliente_telefone, data, hora_inicio, hora_fim)
+    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
   `,
-        )
-        .run(
+        [
             barbeiro_id,
             servico_id,
             cliente_nome,
@@ -204,17 +153,17 @@ export function criarAgendamento(req: Request, res: Response) {
             data,
             hora_inicio,
             horaFim,
-        );
+        ],
+    );
 
     res.status(201).json({
-        id: resultado.lastInsertRowid,
+        id: rows[0].id,
         mensagem: "Agendamento criado com sucesso",
         hora_fim: horaFim,
     });
 }
 
-// Listar agendamentos de um barbeiro por data
-export function listarAgendamentos(req: Request, res: Response) {
+export async function listarAgendamentos(req: AuthRequest, res: Response) {
     const { barbeiro_id, data } = req.query as Record<string, string>;
 
     if (!barbeiro_id || !data) {
@@ -222,94 +171,95 @@ export function listarAgendamentos(req: Request, res: Response) {
         return;
     }
 
-    const agendamentos = db
-        .prepare(
-            `
-    SELECT
-      a.id,
-      a.cliente_nome,
-      a.cliente_telefone,
-      a.data,
-      a.hora_inicio,
-      a.hora_fim,
-      a.status,
-      s.nome AS servico,
-      s.preco
+    const { rows } = await pool.query(
+        `
+    SELECT a.id, a.cliente_nome, a.cliente_telefone, a.data,
+           a.hora_inicio, a.hora_fim, a.status,
+           s.nome AS servico, s.preco
     FROM agendamentos a
     JOIN servicos s ON s.id = a.servico_id
-    WHERE a.barbeiro_id = ? AND a.data = ?
+    WHERE a.barbeiro_id = $1 AND a.data = $2
     ORDER BY a.hora_inicio
   `,
-        )
-        .all(barbeiro_id, data);
+        [barbeiro_id, data],
+    );
 
-    res.json(agendamentos);
+    res.json(rows);
 }
 
-// Cancelar agendamento
-export function cancelarAgendamento(req: Request, res: Response) {
+export async function cancelarAgendamento(req: AuthRequest, res: Response) {
     const { id } = req.params;
 
-    const agendamento = db
-        .prepare(
-            `
-    SELECT id, status FROM agendamentos WHERE id = ?
-  `,
-        )
-        .get(id) as { id: number; status: string } | undefined;
+    const { rows } = await pool.query(
+        "SELECT id, status FROM agendamentos WHERE id = $1",
+        [id],
+    );
 
-    if (!agendamento) {
+    if (rows.length === 0) {
         res.status(404).json({ erro: "Agendamento não encontrado" });
         return;
     }
 
-    if (agendamento.status === "cancelado") {
+    if (rows[0].status === "cancelado") {
         res.status(400).json({ erro: "Agendamento já está cancelado" });
         return;
     }
 
-    db.prepare(
-        `
-    UPDATE agendamentos SET status = 'cancelado' WHERE id = ?
-  `,
-    ).run(id);
-
+    await pool.query(
+        "UPDATE agendamentos SET status = 'cancelado' WHERE id = $1",
+        [id],
+    );
     res.json({ mensagem: "Agendamento cancelado com sucesso" });
 }
 
-export function concluirAgendamento(req: Request, res: Response) {
+export async function concluirAgendamento(req: AuthRequest, res: Response) {
     const { id } = req.params;
 
-    const agendamento = db
-        .prepare(
-            `
-    SELECT id, status FROM agendamentos WHERE id = ?
-  `,
-        )
-        .get(id) as { id: number; status: string } | undefined;
+    const { rows } = await pool.query(
+        "SELECT id, status FROM agendamentos WHERE id = $1",
+        [id],
+    );
 
-    if (!agendamento) {
+    if (rows.length === 0) {
         res.status(404).json({ erro: "Agendamento não encontrado" });
         return;
     }
 
-    if (agendamento.status !== "confirmado") {
+    if (rows[0].status !== "confirmado") {
         res.status(400).json({
             erro: "Apenas agendamentos confirmados podem ser concluídos",
         });
         return;
     }
 
-    db.prepare(
-        `
-    UPDATE agendamentos SET status = 'concluido' WHERE id = ?
-  `,
-    ).run(id);
-
+    await pool.query(
+        "UPDATE agendamentos SET status = 'concluido' WHERE id = $1",
+        [id],
+    );
     res.json({ mensagem: "Agendamento concluído com sucesso" });
 }
 
-export function limparAgendamentosAntigos(req: AuthRequest, res: Response) {
+export async function deletarAgendamento(req: AuthRequest, res: Response) {
+    const { id } = req.params;
+
+    const { rows } = await pool.query(
+        "SELECT id FROM agendamentos WHERE id = $1",
+        [id],
+    );
+
+    if (rows.length === 0) {
+        res.status(404).json({ erro: "Agendamento não encontrado" });
+        return;
+    }
+
+    await pool.query("DELETE FROM agendamentos WHERE id = $1", [id]);
+    res.json({ mensagem: "Agendamento deletado" });
+}
+
+export async function limparAgendamentosAntigos(
+    req: AuthRequest,
+    res: Response,
+) {
     const { ate_data } = req.body;
 
     if (!ate_data) {
@@ -317,21 +267,15 @@ export function limparAgendamentosAntigos(req: AuthRequest, res: Response) {
         return;
     }
 
-    const resultado = db
-        .prepare(
-            `
-    DELETE FROM agendamentos WHERE data <= ?
-  `,
-        )
-        .run(ate_data);
+    const { rowCount } = await pool.query(
+        "DELETE FROM agendamentos WHERE data <= $1",
+        [ate_data],
+    );
 
-    res.json({
-        mensagem: "Limpeza concluída",
-        removidos: resultado.changes,
-    });
+    res.json({ mensagem: "Limpeza concluída", removidos: rowCount });
 }
 
-export function resumoPeriodo(req: AuthRequest, res: Response) {
+export async function resumoPeriodo(req: AuthRequest, res: Response) {
     const { barbeiro_id, data_inicio, data_fim } = req.query as Record<
         string,
         string
@@ -344,63 +288,28 @@ export function resumoPeriodo(req: AuthRequest, res: Response) {
         return;
     }
 
-    const agendamentos = db
-        .prepare(
-            `
-    SELECT
-      a.id,
-      a.data,
-      a.hora_inicio,
-      a.hora_fim,
-      a.status,
-      a.cliente_nome,
-      a.cliente_telefone,
-      s.nome AS servico,
-      s.preco
+    const { rows } = await pool.query(
+        `
+    SELECT a.id, a.data, a.hora_inicio, a.hora_fim, a.status,
+           a.cliente_nome, a.cliente_telefone,
+           s.nome AS servico, s.preco
     FROM agendamentos a
     JOIN servicos s ON s.id = a.servico_id
-    WHERE a.barbeiro_id = ?
-      AND a.data >= ?
-      AND a.data <= ?
+    WHERE a.barbeiro_id = $1 AND a.data >= $2 AND a.data <= $3
     ORDER BY a.data, a.hora_inicio
   `,
-        )
-        .all(barbeiro_id, data_inicio, data_fim) as any[];
+        [barbeiro_id, data_inicio, data_fim],
+    );
 
-    const total = agendamentos.length;
-    const concluidos = agendamentos.filter(
-        (a) => a.status === "concluido",
-    ).length;
-    const cancelados = agendamentos.filter(
-        (a) => a.status === "cancelado",
-    ).length;
-    const receita = agendamentos
+    const total = rows.length;
+    const concluidos = rows.filter((a) => a.status === "concluido").length;
+    const cancelados = rows.filter((a) => a.status === "cancelado").length;
+    const receita = rows
         .filter((a) => a.status === "concluido")
-        .reduce((acc, a) => acc + a.preco, 0);
+        .reduce((acc, a) => acc + parseFloat(a.preco), 0);
 
     res.json({
-        agendamentos,
+        agendamentos: rows,
         resumo: { total, concluidos, cancelados, receita },
     });
-}
-
-export function deletarAgendamento(req: AuthRequest, res: Response) {
-    const { id } = req.params;
-
-    const agendamento = db
-        .prepare(
-            `
-    SELECT id FROM agendamentos WHERE id = ?
-  `,
-        )
-        .get(id);
-
-    if (!agendamento) {
-        res.status(404).json({ erro: "Agendamento não encontrado" });
-        return;
-    }
-
-    db.prepare(`DELETE FROM agendamentos WHERE id = ?`).run(id);
-
-    res.json({ mensagem: "Agendamento deletado" });
 }

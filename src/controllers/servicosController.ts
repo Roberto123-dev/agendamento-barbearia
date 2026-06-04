@@ -1,40 +1,27 @@
 import { Request, Response } from "express";
-import db from "../database/db";
+import pool from "../database/db";
 
-// Listar todos os serviços ativos
-export function listarServicos(req: Request, res: Response) {
-    const servicos = db
-        .prepare(
-            `
+export async function listarServicos(req: Request, res: Response) {
+    const { rows } = await pool.query(`
     SELECT id, nome, duracao_minutos, preco
-    FROM servicos
-    WHERE ativo = 1
-    ORDER BY preco
-  `,
-        )
-        .all();
-
-    res.json(servicos);
+    FROM servicos WHERE ativo = 1 ORDER BY preco
+  `);
+    res.json(rows);
 }
 
-// Buscar serviço por ID
-export function buscarServico(req: Request, res: Response) {
+export async function buscarServico(req: Request, res: Response) {
     const { id } = req.params;
-
-    const servico = db
-        .prepare(
-            `
+    const { rows } = await pool.query(
+        `
     SELECT id, nome, duracao_minutos, preco
-    FROM servicos
-    WHERE id = ? AND ativo = 1
+    FROM servicos WHERE id = $1 AND ativo = 1
   `,
-        )
-        .get(id);
+        [id],
+    );
 
-    if (!servico) {
+    if (rows.length === 0) {
         res.status(404).json({ erro: "Serviço não encontrado" });
         return;
     }
-
-    res.json(servico);
+    res.json(rows[0]);
 }

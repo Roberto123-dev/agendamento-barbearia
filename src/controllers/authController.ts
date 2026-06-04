@@ -1,14 +1,7 @@
 import { Request, Response } from "express";
-import db from "../database/db";
+import pool from "../database/db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-
-interface Barbeiro {
-    id: number;
-    nome: string;
-    email: string;
-    senha: string;
-}
 
 export async function login(req: Request, res: Response) {
     const { email, senha } = req.body;
@@ -18,21 +11,20 @@ export async function login(req: Request, res: Response) {
         return;
     }
 
-    const barbeiro = db
-        .prepare(
-            `
-    SELECT id, nome, email, senha
-    FROM barbeiros
-    WHERE email = ? AND ativo = 1
+    const { rows } = await pool.query(
+        `
+    SELECT id, nome, email, senha FROM barbeiros
+    WHERE email = $1 AND ativo = 1
   `,
-        )
-        .get(email) as Barbeiro | undefined;
+        [email],
+    );
 
-    if (!barbeiro) {
+    if (rows.length === 0) {
         res.status(401).json({ erro: "Credenciais inválidas" });
         return;
     }
 
+    const barbeiro = rows[0];
     const senhaCorreta = await bcrypt.compare(senha, barbeiro.senha);
 
     if (!senhaCorreta) {
@@ -64,20 +56,19 @@ export async function trocarSenha(req: Request, res: Response) {
         return;
     }
 
-    const barbeiro = db
-        .prepare(
-            `
-    SELECT id, senha FROM barbeiros WHERE email = ? AND ativo = 1
+    const { rows } = await pool.query(
+        `
+    SELECT id, senha FROM barbeiros WHERE email = $1 AND ativo = 1
   `,
-        )
-        .get(email) as Barbeiro | undefined;
+        [email],
+    );
 
-    if (!barbeiro) {
+    if (rows.length === 0) {
         res.status(401).json({ erro: "Credenciais inválidas" });
         return;
     }
 
-    const senhaCorreta = await bcrypt.compare(senha_atual, barbeiro.senha);
+    const senhaCorreta = await bcrypt.compare(senha_atual, rows[0].senha);
 
     if (!senhaCorreta) {
         res.status(401).json({ erro: "Senha atual incorreta" });
@@ -85,12 +76,10 @@ export async function trocarSenha(req: Request, res: Response) {
     }
 
     const novaHash = await bcrypt.hash(nova_senha, 10);
-
-    db.prepare(
-        `
-    UPDATE barbeiros SET senha = ? WHERE id = ?
-  `,
-    ).run(novaHash, barbeiro.id);
+    await pool.query("UPDATE barbeiros SET senha = $1 WHERE id = $2", [
+        novaHash,
+        rows[0].id,
+    ]);
 
     res.json({ mensagem: "Senha atualizada com sucesso" });
 }

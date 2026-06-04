@@ -1,4 +1,4 @@
-const API = "http://localhost:3000";
+const API = "https://agendamento-barbearia-la36.onrender.com/";
 
 // Se já está logado, redireciona
 if (localStorage.getItem("token")) {

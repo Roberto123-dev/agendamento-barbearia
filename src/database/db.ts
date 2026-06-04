@@ -3,8 +3,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const connectionString =
+    process.env.DATABASE_URL?.replace("localhost:5432", "localhost:5433") ||
+    "postgresql://postgres:postgres@localhost:5433/barbearia";
+
+console.log("Conectando em:", connectionString);
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString,
     ssl:
         process.env.NODE_ENV === "production"
             ? { rejectUnauthorized: false }

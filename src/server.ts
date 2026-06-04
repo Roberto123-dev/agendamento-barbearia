@@ -9,6 +9,7 @@ import agendamentosRouter from "./routes/agendamentos";
 import authRouter from "./routes/auth";
 import pool from "./database/db";
 import bcrypt from "bcrypt";
+import bloqueiosRouter from "./routes/bloqueios";
 
 dotenv.config();
 
@@ -114,6 +115,7 @@ app.use("/auth", authRouter);
 app.use("/barbeiros", barbeirosRouter);
 app.use("/servicos", servicosRouter);
 app.use("/agendamentos", agendamentosRouter);
+app.use("/bloqueios", bloqueiosRouter);
 
 app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });

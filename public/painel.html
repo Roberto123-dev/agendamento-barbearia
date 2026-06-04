@@ -815,6 +815,63 @@
 
                 <div id="lista-horarios"></div>
 
+                <!-- Folgas pontuais -->
+                <div style="margin-top: 32px">
+                    <h3
+                        style="
+                            color: #c9a84c;
+                            font-size: 1rem;
+                            margin-bottom: 8px;
+                        "
+                    >
+                        📅 Folgas pontuais
+                    </h3>
+                    <p
+                        style="
+                            color: #aaa;
+                            font-size: 0.85rem;
+                            margin-bottom: 16px;
+                        "
+                    >
+                        Bloqueie um dia específico mesmo que seja dia de
+                        trabalho.
+                    </p>
+
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px">
+                        <input
+                            type="date"
+                            id="input-folga"
+                            style="
+                                flex: 1;
+                                padding: 10px 14px;
+                                background: #1a1a1a;
+                                border: 1px solid #333;
+                                border-radius: 8px;
+                                color: #f0f0f0;
+                                font-size: 0.95rem;
+                                outline: none;
+                            "
+                        />
+                        <button
+                            onclick="adicionarBloqueio()"
+                            style="
+                                padding: 10px 20px;
+                                background: #c9a84c;
+                                border: none;
+                                border-radius: 8px;
+                                color: #000;
+                                font-weight: bold;
+                                cursor: pointer;
+                                white-space: nowrap;
+                            "
+                        >
+                            + Adicionar
+                        </button>
+                    </div>
+
+                    <div id="lista-bloqueios"></div>
+                </div>
+
                 <button
                     onclick="salvarHorarios()"
                     style="

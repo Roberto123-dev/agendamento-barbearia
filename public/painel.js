@@ -21,6 +21,7 @@ let dataAtual = new Date();
 let dataSelecionada = new Date();
 let diasComAgendamento = new Set(); // dias do mês atual que têm agendamentos
 let horariosEditados = {}; // { 1: { ativo: true, inicio: "09:00", fim: "18:00" }, ... }
+let bloqueiosMes = []; // { id, data }
 
 // ─── CALENDÁRIO POR DIA ───────────────────────────────
 
@@ -59,15 +60,6 @@ function toggleCalendarioPainel() {
 function fecharCalendario() {
     const cal = document.getElementById("calendario-painel");
     if (cal) cal.style.display = "none";
-}
-
-function mudarMes(delta) {
-    dataAtual = new Date(
-        dataAtual.getFullYear(),
-        dataAtual.getMonth() + delta,
-        1,
-    );
-    renderCalendario();
 }
 
 function renderCalendario() {
@@ -550,7 +542,10 @@ function trocarAba(aba) {
     if (resumoDia) resumoDia.style.display = aba === "dia" ? "grid" : "none";
     if (lista && aba !== "dia") lista.innerHTML = "";
 
-    if (aba === "horarios") carregarHorarios();
+    if (aba === "horarios") {
+        carregarHorarios();
+        carregarBloqueios();
+    }
 }
 
 const DIAS_SEMANA = [
@@ -832,6 +827,101 @@ async function buscarPeriodo() {
     }
 
     document.getElementById("resumo-periodo").style.display = "block";
+}
+
+// ─── FOLGAS PONTUAIS ──────────────────────────────────
+
+async function carregarBloqueios() {
+    const ano = dataAtual.getFullYear();
+    const mes = String(dataAtual.getMonth() + 1).padStart(2, "0");
+
+    const res = await fetch(
+        `${API}/bloqueios?barbeiro_id=${barbeiro.id}&ano=${ano}&mes=${mes}`,
+        { headers },
+    );
+    bloqueiosMes = await res.json();
+    renderBloqueios();
+}
+
+function renderBloqueios() {
+    const lista = document.getElementById("lista-bloqueios");
+    if (!lista) return;
+
+    if (bloqueiosMes.length === 0) {
+        lista.innerHTML = `<p style="color:#555;font-size:0.9rem;text-align:center;padding:16px;">
+            Nenhuma folga cadastrada neste mês
+        </p>`;
+        return;
+    }
+
+    lista.innerHTML = bloqueiosMes
+        .map((b) => {
+            const dataFormatada = new Date(
+                b.data + "T12:00:00",
+            ).toLocaleDateString("pt-BR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+            });
+            return `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+                background:#111;border:1px solid #333;border-radius:8px;
+                padding:12px 16px;margin-bottom:8px;">
+                <span style="color:#f0f0f0;font-size:0.9rem;">📅 ${dataFormatada}</span>
+                <button onclick="removerBloqueio(${b.id})" style="
+                    background:transparent;border:1px solid #c0392b;color:#c0392b;
+                    padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">
+                    Remover
+                </button>
+            </div>`;
+        })
+        .join("");
+}
+
+async function adicionarBloqueio() {
+    const input = document.getElementById("input-folga");
+    const data = input.value;
+
+    if (!data) {
+        alert("Selecione uma data");
+        return;
+    }
+
+    const res = await fetch(`${API}/bloqueios`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ barbeiro_id: barbeiro.id, data }),
+    });
+
+    const dados = await res.json();
+
+    if (!res.ok) {
+        alert(dados.erro || "Erro ao cadastrar folga");
+        return;
+    }
+
+    input.value = "";
+    await carregarBloqueios();
+    await carregarDiasComAgendamento();
+    renderCalendario();
+}
+
+async function removerBloqueio(id) {
+    if (!confirm("Remover esta folga?")) return;
+
+    const res = await fetch(`${API}/bloqueios/${id}`, {
+        method: "DELETE",
+        headers,
+    });
+
+    if (res.ok) {
+        await carregarBloqueios();
+        await carregarDiasComAgendamento();
+        renderCalendario();
+    } else {
+        const dados = await res.json();
+        alert(dados.erro || "Erro ao remover folga");
+    }
 }
 
 init();

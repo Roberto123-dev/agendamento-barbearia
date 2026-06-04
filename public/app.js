@@ -8,6 +8,7 @@ let slotSelecionado = null;
 let dataClienteAtual = new Date();
 let dataClienteSelecionada = null;
 let diasTrabalho = new Set(); // dias da semana (0-6) que o barbeiro trabalha
+let datasBloqueadas = new Set(); // datas específicas bloqueadas ex: "2026-06-20"
 
 // ─── CALENDÁRIO CLIENTE ───────────────────────────────
 
@@ -23,13 +24,13 @@ function fecharCalendarioCliente() {
     document.getElementById("calendario-cliente").style.display = "none";
 }
 
-function mudarMesCliente(delta) {
+async function mudarMesCliente(delta) {
     dataClienteAtual = new Date(
         dataClienteAtual.getFullYear(),
         dataClienteAtual.getMonth() + delta,
         1,
     );
-    renderCalendarioCliente();
+    await carregarDiasTrabalho(); // já chama renderCalendarioCliente internamente
 }
 
 function renderCalendarioCliente() {
@@ -91,8 +92,14 @@ function renderCalendarioCliente() {
             dataClienteSelecionada &&
             data.toDateString() === dataClienteSelecionada.toDateString();
         const domingo = diaSemana === 0;
-        const temDisponibilidade = diasTrabalho.has(diaSemana);
-        const desabilitado = passado || domingo || !temDisponibilidade;
+
+        // Formata a data igual ao banco: "2026-06-20"
+        const dataStr = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+        const bloqueado = datasBloqueadas.has(dataStr);
+
+        const temDisponibilidade = diasTrabalho.has(diaSemana) && !bloqueado;
+        const desabilitado =
+            passado || domingo || !temDisponibilidade || bloqueado;
 
         const classes = [
             "dia-btn",
@@ -141,16 +148,36 @@ async function carregarDiasTrabalho() {
 
     if (!barbeiro_id) {
         diasTrabalho = new Set();
+        datasBloqueadas = new Set();
         renderCalendarioCliente();
         return;
     }
 
+    const ano = dataClienteAtual.getFullYear();
+    const mes = String(dataClienteAtual.getMonth() + 1).padStart(2, "0");
+
     try {
-        const res = await fetch(`${API}/barbeiros/${barbeiro_id}/horarios`);
-        const rows = await res.json();
-        diasTrabalho = new Set(rows.map((h) => h.dia_semana));
-    } catch {
+        const [resHorarios, resBloqueios] = await Promise.all([
+            fetch(`${API}/barbeiros/${barbeiro_id}/horarios`),
+            fetch(
+                `${API}/bloqueios?barbeiro_id=${barbeiro_id}&ano=${ano}&mes=${mes}`,
+            ),
+        ]);
+
+        const horarios = await resHorarios.json();
+        const bloqueios = await resBloqueios.json(); // 👈 só uma vez
+
+        diasTrabalho = new Set(horarios.map((h) => h.dia_semana));
+        datasBloqueadas = new Set(
+            Array.isArray(bloqueios) ? bloqueios.map((b) => b.data) : [],
+        );
+
+        console.log("diasTrabalho:", [...diasTrabalho]);
+        console.log("datasBloqueadas:", [...datasBloqueadas]);
+    } catch (e) {
+        console.error("erro em carregarDiasTrabalho:", e);
         diasTrabalho = new Set();
+        datasBloqueadas = new Set();
     }
 
     renderCalendarioCliente();

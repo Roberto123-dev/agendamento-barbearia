@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Painel do Barbeiro</title>
+        <link rel="stylesheet" href="style.css" />
+        <style>
+            .painel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 24px;
+            }
+            .filtros {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 24px;
+                flex-wrap: wrap;
+            }
+            .resumo {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                margin-bottom: 28px;
+            }
+            .card-resumo {
+                background: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 10px;
+                padding: 16px;
+                text-align: center;
+            }
+            .card-resumo .numero {
+                font-size: 2rem;
+                font-weight: bold;
+                color: #c9a84c;
+            }
+            .card-resumo .legenda {
+                font-size: 0.8rem;
+                color: #aaa;
+                margin-top: 4px;
+            }
+            .lista-agendamentos {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .card-agendamento {
+                background: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 10px;
+                padding: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+            .card-agendamento.cancelado {
+                opacity: 0.4;
+            }
+            .card-agendamento.concluido {
+                border-color: #2a5c2a;
+            }
+            .info-agendamento .hora {
+                font-size: 1.3rem;
+                font-weight: bold;
+                color: #c9a84c;
+            }
+            .info-agendamento .cliente {
+                font-size: 1rem;
+                margin: 4px 0;
+            }
+            .info-agendamento .detalhe {
+                font-size: 0.85rem;
+                color: #aaa;
+            }
+            .acoes {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .btn-concluir {
+                padding: 8px 16px;
+                background: #2a5c2a;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                white-space: nowrap;
+            }
+            .btn-cancelar {
+                padding: 8px 16px;
+                background: transparent;
+                color: #c0392b;
+                border: 1px solid #c0392b;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                white-space: nowrap;
+            }
+            .btn-concluir:hover {
+                opacity: 0.85;
+            }
+            .btn-cancelar:hover {
+                background: #c0392b;
+                color: #fff;
+            }
+            .badge {
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 20px;
+                font-size: 0.75rem;
+                font-weight: bold;
+            }
+            .badge.confirmado {
+                background: #1a3a5c;
+                color: #5b9bd5;
+            }
+            .badge.concluido {
+                background: #1a3a1a;
+                color: #5bd55b;
+            }
+            .badge.cancelado {
+                background: #3a1a1a;
+                color: #d55b5b;
+            }
+            .vazio {
+                text-align: center;
+                color: #555;
+                padding: 40px;
+            }
+            .nav-painel {
+                display: flex;
+                gap: 16px;
+                margin-bottom: 28px;
+            }
+            .nav-painel a {
+                color: #aaa;
+                text-decoration: none;
+                font-size: 0.9rem;
+                padding-bottom: 4px;
+                border-bottom: 2px solid transparent;
+            }
+            .nav-painel a.ativo {
+                color: #c9a84c;
+                border-bottom-color: #c9a84c;
+            }
+            .dia-btn {
+                aspect-ratio: 1;
+                border: none;
+                border-radius: 6px;
+                background: transparent;
+                color: #f0f0f0;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: all 0.15s;
+            }
+            .dia-btn:hover:not(:disabled) {
+                background: #333;
+            }
+            .dia-btn.hoje {
+                border: 1px solid #c9a84c;
+                color: #c9a84c;
+            }
+            .dia-btn.selecionado {
+                background: #c9a84c !important;
+                color: #000 !important;
+                font-weight: bold;
+            }
+            .dia-btn:disabled {
+                color: #444;
+                cursor: not-allowed;
+            }
+            .dia-btn.domingo {
+                color: #c0392b;
+            }
+            .calendario-wrapper {
+                position: relative;
+            }
+            .calendario-popup {
+                display: none;
+                position: absolute;
+                background: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 12px;
+                padding: 16px;
+                z-index: 50;
+                margin-top: 8px;
+                width: 300px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>✂️ Painel do Barbeiro</h1>
+            <p>Gerencie seus agendamentos</p>
+        </header>
+
+        <main>
+            <!-- Header com botões -->
+            <div class="painel-header">
+                <div class="nav-painel">
+                    <a href="index.html">← Página de agendamento</a>
+                </div>
+                <div style="display: flex; gap: 8px">
+                    <button
+                        onclick="abrirModal()"
+                        style="
+                            background: transparent;
+                            border: 1px solid #c9a84c;
+                            color: #c9a84c;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        "
+                    >
+                        + Barbeiro
+                    </button>
+                    <button
+                        onclick="toggleModoSelecao()"
+                        id="btn-selecao"
+                        style="
+                            background: transparent;
+                            border: 1px solid #c0392b;
+                            color: #c0392b;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        "
+                    >
+                        ☑ Selecionar
+                    </button>
+                    <button
+                        onclick="logout()"
+                        style="
+                            background: transparent;
+                            border: 1px solid #555;
+                            color: #aaa;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        "
+                    >
+                        Sair
+                    </button>
+                </div>
+            </div>
+
+            <!-- Barra de ação da seleção -->
+            <div
+                id="barra-selecao"
+                style="
+                    display: none;
+                    position: fixed;
+                    bottom: 24px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #1a1a1a;
+                    border: 1px solid #c0392b;
+                    border-radius: 12px;
+                    padding: 14px 24px;
+                    display: none;
+                    align-items: center;
+                    gap: 16px;
+                    z-index: 99;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                "
+            >
+                <span id="texto-selecao" style="color: #aaa; font-size: 0.9rem"
+                    >0 selecionados</span
+                >
+                <button
+                    onclick="limparSelecionados()"
+                    style="
+                        background: #c0392b;
+                        border: none;
+                        color: #fff;
+                        padding: 8px 20px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: bold;
+                    "
+                >
+                    🗑 Apagar selecionados
+                </button>
+                <button
+                    onclick="toggleModoSelecao()"
+                    style="
+                        background: transparent;
+                        border: 1px solid #555;
+                        color: #aaa;
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                    "
+                >
+                    Cancelar
+                </button>
+            </div>
+
+            <!-- Modal barbeiros -->
+            <div
+                id="modal-barbeiro"
+                class="hidden"
+                style="
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 100;
+                "
+            >
+                <div
+                    style="
+                        background: #1a1a1a;
+                        border: 1px solid #333;
+                        border-radius: 16px;
+                        padding: 32px;
+                        width: 100%;
+                        max-width: 440px;
+                    "
+                >
+                    <h2 style="color: #c9a84c; margin-bottom: 24px">
+                        Gerenciar Barbeiros
+                    </h2>
+                    <div
+                        id="lista-barbeiros-modal"
+                        style="margin-bottom: 24px"
+                    ></div>
+                    <hr style="border-color: #333; margin-bottom: 24px" />
+                    <h3
+                        style="
+                            color: #aaa;
+                            margin-bottom: 16px;
+                            font-size: 0.95rem;
+                        "
+                    >
+                        Novo Barbeiro
+                    </h3>
+                    <div class="campo">
+                        <label>Nome</label>
+                        <input
+                            type="text"
+                            id="novo-nome"
+                            placeholder="Nome completo"
+                        />
+                    </div>
+                    <div class="campo">
+                        <label>Email</label>
+                        <input
+                            type="email"
+                            id="novo-email"
+                            placeholder="email@barbearia.com"
+                        />
+                    </div>
+                    <div class="campo">
+                        <label>Senha</label>
+                        <input
+                            type="password"
+                            id="novo-senha"
+                            placeholder="••••••"
+                        />
+                    </div>
+                    <div
+                        id="erro-barbeiro"
+                        style="
+                            color: #d55b5b;
+                            font-size: 0.9rem;
+                            margin-bottom: 12px;
+                            display: none;
+                        "
+                    ></div>
+                    <div style="display: flex; gap: 12px">
+                        <button
+                            onclick="fecharModal()"
+                            style="
+                                flex: 1;
+                                padding: 12px;
+                                background: transparent;
+                                border: 1px solid #555;
+                                color: #aaa;
+                                border-radius: 8px;
+                                cursor: pointer;
+                            "
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onclick="salvarBarbeiro()"
+                            style="
+                                flex: 1;
+                                padding: 12px;
+                                background: #c9a84c;
+                                border: none;
+                                color: #000;
+                                font-weight: bold;
+                                border-radius: 8px;
+                                cursor: pointer;
+                            "
+                        >
+                            Cadastrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nome do barbeiro -->
+            <div class="filtros">
+                <div class="campo" style="flex: 1">
+                    <label>Barbeiro</label>
+                    <input
+                        type="text"
+                        id="nome-barbeiro"
+                        disabled
+                        style="
+                            background: #111;
+                            color: #c9a84c;
+                            font-weight: bold;
+                        "
+                    />
+                </div>
+            </div>
+
+            <!-- Abas -->
+            <div
+                style="
+                    display: flex;
+                    gap: 0;
+                    margin-bottom: 24px;
+                    border-bottom: 1px solid #333;
+                "
+            >
+                <button
+                    id="aba-dia"
+                    onclick="trocarAba('dia')"
+                    style="
+                        padding: 10px 20px;
+                        background: transparent;
+                        border: none;
+                        border-bottom: 2px solid #c9a84c;
+                        color: #c9a84c;
+                        cursor: pointer;
+                        font-size: 0.95rem;
+                    "
+                >
+                    📅 Por dia
+                </button>
+                <button
+                    id="aba-periodo"
+                    onclick="trocarAba('periodo')"
+                    style="
+                        padding: 10px 20px;
+                        background: transparent;
+                        border: none;
+                        border-bottom: 2px solid transparent;
+                        color: #aaa;
+                        cursor: pointer;
+                        font-size: 0.95rem;
+                    "
+                >
+                    📊 Por período
+                </button>
+            </div>
+
+            <!-- ═══ ABA DIA ═══ -->
+            <div id="filtro-dia">
+                <div class="campo">
+                    <label>Data</label>
+                    <div class="calendario-wrapper">
+                        <div
+                            id="data-trigger"
+                            onclick="toggleCalendarioPainel()"
+                            style="
+                                padding: 12px 16px;
+                                background: #1a1a1a;
+                                border: 1px solid #333;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                color: #f0f0f0;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                            "
+                        >
+                            <span id="data-selecionada-texto"
+                                >Selecione uma data</span
+                            >
+                            <span>📅</span>
+                        </div>
+                        <div id="calendario-painel" class="calendario-popup">
+                            <div
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-bottom: 16px;
+                                "
+                            >
+                                <button
+                                    onclick="mudarMes(-1)"
+                                    style="
+                                        background: transparent;
+                                        border: none;
+                                        color: #c9a84c;
+                                        font-size: 1.2rem;
+                                        cursor: pointer;
+                                        padding: 4px 8px;
+                                    "
+                                >
+                                    ‹
+                                </button>
+                                <span
+                                    id="mes-ano"
+                                    style="font-weight: bold; color: #f0f0f0"
+                                ></span>
+                                <button
+                                    onclick="mudarMes(1)"
+                                    style="
+                                        background: transparent;
+                                        border: none;
+                                        color: #c9a84c;
+                                        font-size: 1.2rem;
+                                        cursor: pointer;
+                                        padding: 4px 8px;
+                                    "
+                                >
+                                    ›
+                                </button>
+                            </div>
+                            <div
+                                id="cabecalho-semana"
+                                style="
+                                    display: grid;
+                                    grid-template-columns: repeat(7, 1fr);
+                                    gap: 4px;
+                                    margin-bottom: 8px;
+                                "
+                            ></div>
+                            <div
+                                id="dias-calendario"
+                                style="
+                                    display: grid;
+                                    grid-template-columns: repeat(7, 1fr);
+                                    gap: 4px;
+                                "
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumo do dia -->
+                <div class="resumo" id="resumo-dia">
+                    <div class="card-resumo">
+                        <div class="numero" id="total-dia">0</div>
+                        <div class="legenda">Agendamentos</div>
+                    </div>
+                    <div class="card-resumo">
+                        <div class="numero" id="total-concluidos">0</div>
+                        <div class="legenda">Concluídos</div>
+                    </div>
+                    <div class="card-resumo">
+                        <div class="numero" id="total-receita">R$0</div>
+                        <div class="legenda">Receita do dia</div>
+                    </div>
+                </div>
+
+                <!-- Lista do dia -->
+                <div class="lista-agendamentos" id="lista"></div>
+            </div>
+
+            <!-- ═══ ABA PERÍODO ═══ -->
+            <div id="filtro-periodo" style="display: none">
+                <div style="display: flex; gap: 12px; flex-wrap: wrap">
+                    <div class="campo" style="flex: 1; min-width: 140px">
+                        <label>Data início</label>
+                        <div class="calendario-wrapper">
+                            <div
+                                onclick="toggleCalendario('inicio')"
+                                style="
+                                    padding: 12px 16px;
+                                    background: #1a1a1a;
+                                    border: 1px solid #333;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    color: #f0f0f0;
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span id="texto-inicio">Selecione</span>
+                                <span>📅</span>
+                            </div>
+                            <div id="cal-inicio" class="calendario-popup">
+                                <div
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                        margin-bottom: 16px;
+                                    "
+                                >
+                                    <button
+                                        onclick="mudarMesPeriodo('inicio', -1)"
+                                        style="
+                                            background: transparent;
+                                            border: none;
+                                            color: #c9a84c;
+                                            font-size: 1.2rem;
+                                            cursor: pointer;
+                                            padding: 4px 8px;
+                                        "
+                                    >
+                                        ‹
+                                    </button>
+                                    <span
+                                        id="mes-ano-inicio"
+                                        style="
+                                            font-weight: bold;
+                                            color: #f0f0f0;
+                                        "
+                                    ></span>
+                                    <button
+                                        onclick="mudarMesPeriodo('inicio', 1)"
+                                        style="
+                                            background: transparent;
+                                            border: none;
+                                            color: #c9a84c;
+                                            font-size: 1.2rem;
+                                            cursor: pointer;
+                                            padding: 4px 8px;
+                                        "
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                                <div
+                                    id="cab-inicio"
+                                    style="
+                                        display: grid;
+                                        grid-template-columns: repeat(7, 1fr);
+                                        gap: 4px;
+                                        margin-bottom: 8px;
+                                    "
+                                ></div>
+                                <div
+                                    id="dias-inicio"
+                                    style="
+                                        display: grid;
+                                        grid-template-columns: repeat(7, 1fr);
+                                        gap: 4px;
+                                    "
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="campo" style="flex: 1; min-width: 140px">
+                        <label>Data fim</label>
+                        <div class="calendario-wrapper">
+                            <div
+                                onclick="toggleCalendario('fim')"
+                                style="
+                                    padding: 12px 16px;
+                                    background: #1a1a1a;
+                                    border: 1px solid #333;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    color: #f0f0f0;
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span id="texto-fim">Selecione</span>
+                                <span>📅</span>
+                            </div>
+                            <div id="cal-fim" class="calendario-popup">
+                                <div
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                        margin-bottom: 16px;
+                                    "
+                                >
+                                    <button
+                                        onclick="mudarMesPeriodo('fim', -1)"
+                                        style="
+                                            background: transparent;
+                                            border: none;
+                                            color: #c9a84c;
+                                            font-size: 1.2rem;
+                                            cursor: pointer;
+                                            padding: 4px 8px;
+                                        "
+                                    >
+                                        ‹
+                                    </button>
+                                    <span
+                                        id="mes-ano-fim"
+                                        style="
+                                            font-weight: bold;
+                                            color: #f0f0f0;
+                                        "
+                                    ></span>
+                                    <button
+                                        onclick="mudarMesPeriodo('fim', 1)"
+                                        style="
+                                            background: transparent;
+                                            border: none;
+                                            color: #c9a84c;
+                                            font-size: 1.2rem;
+                                            cursor: pointer;
+                                            padding: 4px 8px;
+                                        "
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                                <div
+                                    id="cab-fim"
+                                    style="
+                                        display: grid;
+                                        grid-template-columns: repeat(7, 1fr);
+                                        gap: 4px;
+                                        margin-bottom: 8px;
+                                    "
+                                ></div>
+                                <div
+                                    id="dias-fim"
+                                    style="
+                                        display: grid;
+                                        grid-template-columns: repeat(7, 1fr);
+                                        gap: 4px;
+                                    "
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    onclick="buscarPeriodo()"
+                    style="
+                        width: 100%;
+                        padding: 12px;
+                        margin-top: 8px;
+                        background: #c9a84c;
+                        border: none;
+                        border-radius: 8px;
+                        color: #000;
+                        font-weight: bold;
+                        cursor: pointer;
+                    "
+                >
+                    Buscar período
+                </button>
+
+                <!-- Resumo do período -->
+                <div
+                    id="resumo-periodo"
+                    style="display: none; margin-top: 20px"
+                >
+                    <div class="resumo">
+                        <div class="card-resumo">
+                            <div class="numero" id="p-total">0</div>
+                            <div class="legenda">Agendamentos</div>
+                        </div>
+                        <div class="card-resumo">
+                            <div class="numero" id="p-concluidos">0</div>
+                            <div class="legenda">Concluídos</div>
+                        </div>
+                        <div class="card-resumo">
+                            <div
+                                class="numero"
+                                id="p-receita"
+                                style="font-size: 1.4rem"
+                            >
+                                R$0
+                            </div>
+                            <div class="legenda">Receita total</div>
+                        </div>
+                    </div>
+                    <div class="lista-agendamentos" id="lista-periodo"></div>
+                </div>
+            </div>
+        </main>
+
+        <script src="painel.js"></script>
+    </body>
+</html>

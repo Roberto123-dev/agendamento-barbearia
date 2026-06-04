@@ -1,0 +1,11 @@
+services:
+    - type: web
+      name: agendamento-barbearia
+      runtime: node
+      buildCommand: npm install && npm run build
+      startCommand: node dist/server.js
+      envVars:
+          - key: JWT_SECRET
+            value: barbearia_secret_2026
+          - key: PORT
+            value: 3000

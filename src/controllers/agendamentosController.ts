@@ -193,7 +193,7 @@ export async function criarAgendamento(req: Request, res: Response) {
             subs.map((s) =>
                 webpush
                     .sendNotification(JSON.parse(s.subscription), payload)
-                    .catch((err) => {
+                    .catch((err: any) => {
                         // Remove subscription inválida (expirada)
                         if (err.statusCode === 410) {
                             pool.query(

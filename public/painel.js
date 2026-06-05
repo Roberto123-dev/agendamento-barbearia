@@ -19,9 +19,9 @@ const headers = {
 // Estado do calendário do painel (por dia)
 let dataAtual = new Date();
 let dataSelecionada = new Date();
-let diasComAgendamento = new Set(); // dias do mês atual que têm agendamentos
-let horariosEditados = {}; // { 1: { ativo: true, inicio: "09:00", fim: "18:00" }, ... }
-let bloqueiosMes = []; // { id, data }
+let diasComAgendamento = new Set();
+let horariosEditados = {};
+let bloqueiosMes = [];
 
 // ─── CALENDÁRIO POR DIA ───────────────────────────────
 
@@ -94,7 +94,7 @@ function renderCalendario() {
     ]
         .map(
             (d) =>
-                `<div style="text-align:center;font-size:0.75rem;color:#aaa;padding:4px;">${d}</div>`,
+                `<div style="text-align:center;font-size:0.7rem;color:var(--text-muted);padding:4px;">${d}</div>`,
         )
         .join("");
 
@@ -140,15 +140,10 @@ function renderCalendario() {
             ${
                 temAgendamento
                     ? `<span style="
-                position:absolute;
-                bottom:3px;
-                left:50%;
+                position:absolute;bottom:3px;left:50%;
                 transform:translateX(-50%);
-                width:5px;
-                height:5px;
-                border-radius:50%;
-                background:#4caf50;
-                display:block;
+                width:4px;height:4px;border-radius:50%;
+                background:#4caf50;display:block;
             "></span>`
                     : ""
             }
@@ -173,7 +168,7 @@ function getDataFormatada() {
     return `${ano}-${mes}-${dia}`;
 }
 
-// Fecha calendário do dia ao clicar fora
+// Fecha calendários ao clicar fora
 document.addEventListener("click", (e) => {
     const cal = document.getElementById("calendario-painel");
     const trigger = document.getElementById("data-trigger");
@@ -186,7 +181,6 @@ document.addEventListener("click", (e) => {
         fecharCalendario();
     }
 
-    // Fecha calendários do período ao clicar fora
     ["inicio", "fim"].forEach((tipo) => {
         const calP = document.getElementById(`cal-${tipo}`);
         const triggerP = calP?.previousElementSibling;
@@ -204,8 +198,8 @@ document.addEventListener("click", (e) => {
 // ─── PAINEL ───────────────────────────────────────────
 
 async function init() {
-    document.querySelector("header p").textContent =
-        `Bem-vindo, ${barbeiro.nome}`;
+    // Header: nome do barbeiro no subtítulo e no input
+    document.getElementById("header-nome-barbeiro").textContent = barbeiro.nome;
     document.getElementById("nome-barbeiro").value = barbeiro.nome;
 
     dataSelecionada = new Date();
@@ -283,19 +277,19 @@ function criarCard(a) {
                     ? `
                 <input type="checkbox" id="check-${a.id}"
                     onchange="toggleSelecao(${a.id}, this)"
-                    style="width:18px;height:18px;cursor:pointer;accent-color:#c9a84c;flex-shrink:0;">
+                    style="width:18px;height:18px;cursor:pointer;accent-color:var(--gold);flex-shrink:0;">
             `
                     : ""
             }
             <div class="info-agendamento" style="flex:1;">
                 <div class="hora">${a.hora_inicio} – ${a.hora_fim}</div>
-                <div class="cliente" style="display:flex;align-items:center;gap:10px;">
+                <div class="cliente">
                     ${a.cliente_nome}
                     <a href="${whatsappLink}" target="_blank" title="Chamar no WhatsApp" style="
                         display:inline-flex;align-items:center;justify-content:center;
-                        width:28px;height:28px;background:#25D366;
+                        width:26px;height:26px;background:#25D366;
                         border-radius:50%;text-decoration:none;flex-shrink:0;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="white">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
                     </a>
@@ -326,7 +320,7 @@ async function atualizarStatus(id, acao) {
     const res = await fetch(url, { method: "PATCH", headers });
 
     if (res.ok) {
-        await carregarDiasComAgendamento(); // 👈 mantém pontos atualizados
+        await carregarDiasComAgendamento();
         renderCalendario();
         carregarAgendamentos();
     } else {
@@ -349,17 +343,16 @@ function toggleModoSelecao() {
 
     if (modoSelecao) {
         btn.textContent = "✕ Cancelar";
-        btn.style.borderColor = "#555";
-        btn.style.color = "#aaa";
+        btn.classList.remove("btn-red");
+        btn.classList.add("btn-muted");
         barra.style.display = "flex";
     } else {
         btn.textContent = "☑ Selecionar";
-        btn.style.borderColor = "#c0392b";
-        btn.style.color = "#c0392b";
+        btn.classList.remove("btn-muted");
+        btn.classList.add("btn-red");
         barra.style.display = "none";
     }
 
-    // Rerenderiza os cards com ou sem checkbox
     carregarAgendamentos();
 }
 
@@ -387,10 +380,7 @@ async function limparSelecionados() {
 
     await Promise.all(
         ids.map((id) =>
-            fetch(`${API}/agendamentos/${id}`, {
-                method: "DELETE",
-                headers,
-            }),
+            fetch(`${API}/agendamentos/${id}`, { method: "DELETE", headers }),
         ),
     );
 
@@ -400,8 +390,8 @@ async function limparSelecionados() {
 
     const btn = document.getElementById("btn-selecao");
     btn.textContent = "☑ Selecionar";
-    btn.style.borderColor = "#c0392b";
-    btn.style.color = "#c0392b";
+    btn.classList.remove("btn-muted");
+    btn.classList.add("btn-red");
     document.getElementById("barra-selecao").style.display = "none";
 
     carregarAgendamentos();
@@ -416,12 +406,12 @@ function logout() {
 // ─── MODAL BARBEIROS ──────────────────────────────────
 
 async function abrirModal() {
-    document.getElementById("modal-barbeiro").style.display = "flex";
+    document.getElementById("modal-barbeiro").classList.remove("hidden");
     await carregarBarbeirosModal();
 }
 
 function fecharModal() {
-    document.getElementById("modal-barbeiro").style.display = "none";
+    document.getElementById("modal-barbeiro").classList.add("hidden");
     document.getElementById("novo-nome").value = "";
     document.getElementById("novo-email").value = "";
     document.getElementById("novo-senha").value = "";
@@ -434,29 +424,22 @@ async function carregarBarbeirosModal() {
 
     if (barbeiros.length === 0) {
         lista.innerHTML =
-            '<p style="color:#555;font-size:0.9rem;">Nenhum barbeiro cadastrado</p>';
+            '<p style="color:var(--text-muted);font-size:0.85rem;">Nenhum barbeiro cadastrado</p>';
         return;
     }
 
     lista.innerHTML = barbeiros
         .map(
             (b) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;
-            padding:10px 14px;background:#111;border:1px solid #333;
-            border-radius:8px;margin-bottom:8px;">
+        <div class="barbeiro-item">
             <div>
-                <div style="font-weight:bold;">${b.nome}</div>
-                <div style="color:#aaa;font-size:0.8rem;">${b.email}</div>
+                <div style="font-weight:600;font-size:0.9rem;">${b.nome}</div>
+                <div style="color:var(--text-muted);font-size:0.78rem;">${b.email}</div>
             </div>
             ${
                 b.id !== barbeiro.id
-                    ? `
-                <button onclick="deletarBarbeiro(${b.id}, '${b.nome}')" style="
-                    background:transparent;border:1px solid #c0392b;color:#c0392b;
-                    padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">
-                    Remover
-                </button>`
-                    : `<span style="color:#555;font-size:0.8rem;">você</span>`
+                    ? `<button onclick="deletarBarbeiro(${b.id}, '${b.nome}')" class="btn-header btn-red">Remover</button>`
+                    : `<span style="color:var(--text-muted);font-size:0.78rem;">você</span>`
             }
         </div>`,
         )
@@ -531,11 +514,11 @@ function trocarAba(aba) {
     document.getElementById("filtro-horarios").style.display =
         aba === "horarios" ? "block" : "none";
 
+    // Atualiza classes das abas
     ["dia", "periodo", "horarios"].forEach((a) => {
         const btn = document.getElementById(`aba-${a}`);
         if (!btn) return;
-        btn.style.borderBottomColor = a === aba ? "#c9a84c" : "transparent";
-        btn.style.color = a === aba ? "#c9a84c" : "#aaa";
+        btn.classList.toggle("ativa", a === aba);
     });
 
     const resumoDia = document.getElementById("resumo-dia");
@@ -549,6 +532,8 @@ function trocarAba(aba) {
         carregarBloqueios();
     }
 }
+
+// ─── HORÁRIOS ─────────────────────────────────────────
 
 const DIAS_SEMANA = [
     { num: 0, nome: "Domingo" },
@@ -566,13 +551,11 @@ async function carregarHorarios() {
     });
     const rows = await res.json();
 
-    // Monta estado: começa tudo inativo
     horariosEditados = {};
     DIAS_SEMANA.forEach(({ num }) => {
         horariosEditados[num] = { ativo: false, inicio: "09:00", fim: "18:00" };
     });
 
-    // Marca os que existem no banco
     rows.forEach((h) => {
         horariosEditados[h.dia_semana] = {
             ativo: true,
@@ -591,30 +574,17 @@ function renderHorarios() {
     DIAS_SEMANA.forEach(({ num, nome }) => {
         const h = horariosEditados[num];
         const item = document.createElement("div");
-        item.style.cssText = `
-            background:#1a1a1a;border:1px solid #333;border-radius:10px;
-            padding:16px;margin-bottom:10px;
-        `;
+        item.className = "horario-item";
         item.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-weight:bold;color:${num === 0 ? "#c0392b" : "#f0f0f0"}">
+            <div class="horario-row">
+                <span class="horario-nome" style="color:${num === 0 ? "var(--red)" : "var(--text)"}">
                     ${nome}
                 </span>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                    <span style="font-size:0.85rem;color:#aaa;">
-                        ${h.ativo ? "Trabalhando" : "Folga"}
-                    </span>
-                    <div onclick="toggleDia(${num})" style="
-                        width:44px;height:24px;border-radius:12px;
-                        background:${h.ativo ? "#c9a84c" : "#333"};
-                        position:relative;cursor:pointer;transition:background 0.2s;
-                    ">
-                        <div style="
-                            position:absolute;top:3px;
-                            left:${h.ativo ? "23px" : "3px"};
-                            width:18px;height:18px;border-radius:50%;
-                            background:#fff;transition:left 0.2s;
-                        "></div>
+                    <span class="horario-status">${h.ativo ? "Trabalhando" : "Folga"}</span>
+                    <div class="toggle-track" onclick="toggleDia(${num})"
+                        style="background:${h.ativo ? "var(--gold)" : "var(--dark3)"};">
+                        <div class="toggle-thumb" style="left:${h.ativo ? "23px" : "3px"};"></div>
                     </div>
                 </label>
             </div>
@@ -623,22 +593,14 @@ function renderHorarios() {
                     ? `
             <div style="display:flex;gap:12px;margin-top:12px;">
                 <div style="flex:1;">
-                    <label style="font-size:0.75rem;color:#aaa;display:block;margin-bottom:4px;">
-                        INÍCIO
-                    </label>
+                    <label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:4px;letter-spacing:0.15em;">INÍCIO</label>
                     <input type="time" value="${h.inicio}"
-                        onchange="atualizarHorario(${num}, 'inicio', this.value)"
-                        style="width:100%;padding:8px 12px;background:#111;border:1px solid #444;
-                               border-radius:6px;color:#f0f0f0;font-size:0.95rem;">
+                        onchange="atualizarHorario(${num}, 'inicio', this.value)">
                 </div>
                 <div style="flex:1;">
-                    <label style="font-size:0.75rem;color:#aaa;display:block;margin-bottom:4px;">
-                        FIM
-                    </label>
+                    <label style="font-size:0.68rem;color:var(--text-muted);display:block;margin-bottom:4px;letter-spacing:0.15em;">FIM</label>
                     <input type="time" value="${h.fim}"
-                        onchange="atualizarHorario(${num}, 'fim', this.value)"
-                        style="width:100%;padding:8px 12px;background:#111;border:1px solid #444;
-                               border-radius:6px;color:#f0f0f0;font-size:0.95rem;">
+                        onchange="atualizarHorario(${num}, 'fim', this.value)">
                 </div>
             </div>`
                     : ""
@@ -739,7 +701,7 @@ function renderCalendarioPeriodo(tipo) {
     ]
         .map(
             (d) =>
-                `<div style="text-align:center;font-size:0.75rem;color:#aaa;padding:4px;">${d}</div>`,
+                `<div style="text-align:center;font-size:0.7rem;color:var(--text-muted);padding:4px;">${d}</div>`,
         )
         .join("");
 
@@ -850,7 +812,7 @@ function renderBloqueios() {
     if (!lista) return;
 
     if (bloqueiosMes.length === 0) {
-        lista.innerHTML = `<p style="color:#555;font-size:0.9rem;text-align:center;padding:16px;">
+        lista.innerHTML = `<p style="color:var(--text-muted);font-size:0.82rem;font-style:italic;text-align:center;padding:12px 0;">
             Nenhuma folga cadastrada neste mês
         </p>`;
         return;
@@ -866,15 +828,9 @@ function renderBloqueios() {
                 month: "long",
             });
             return `
-            <div style="display:flex;justify-content:space-between;align-items:center;
-                background:#111;border:1px solid #333;border-radius:8px;
-                padding:12px 16px;margin-bottom:8px;">
-                <span style="color:#f0f0f0;font-size:0.9rem;">📅 ${dataFormatada}</span>
-                <button onclick="removerBloqueio(${b.id})" style="
-                    background:transparent;border:1px solid #c0392b;color:#c0392b;
-                    padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.8rem;">
-                    Remover
-                </button>
+            <div class="bloqueio-item">
+                <span style="color:var(--text);font-size:0.85rem;">📅 ${dataFormatada}</span>
+                <button onclick="removerBloqueio(${b.id})" class="btn-header btn-red">Remover</button>
             </div>`;
         })
         .join("");
@@ -936,23 +892,17 @@ function iniciarSocket() {
     });
 
     socket.on("novo-agendamento", (dados) => {
-        // Ignora se não é para este barbeiro
         if (dados.barbeiro_id !== barbeiro.id) return;
 
-        // 1. Som de alerta
         tocarAlerta();
-
-        // 2. Notificação do sistema
         notificar(dados);
 
-        // 3. Recarrega a lista se o dia exibido for o mesmo do agendamento
         const dataExibida = getDataFormatada();
         if (dados.data === dataExibida && abaAtiva === "dia") {
             carregarAgendamentos();
             carregarDiasComAgendamento().then(() => renderCalendario());
         }
 
-        // 4. Toast visual no painel
         mostrarToast(dados);
     });
 
@@ -963,7 +913,6 @@ function iniciarSocket() {
 
 function tocarAlerta() {
     try {
-        // Beep sintético via Web Audio API — não precisa de arquivo mp3
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -997,23 +946,22 @@ async function notificar(dados) {
 function mostrarToast(dados) {
     const toast = document.createElement("div");
     toast.style.cssText = `
-        position:fixed;top:24px;right:24px;z-index:999;
-        background:#1a1a1a;border:1px solid #c9a84c;border-radius:12px;
-        padding:16px 20px;max-width:320px;
-        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+        position:fixed;top:24px;right:24px;z-index:9999;
+        background:var(--dark2);border:1px solid var(--gold);border-radius:8px;
+        padding:16px 20px;max-width:300px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.6);
         animation:slideIn 0.3s ease;
     `;
     toast.innerHTML = `
-        <div style="font-weight:bold;color:#c9a84c;margin-bottom:4px;">
+        <div style="font-family:'Playfair Display',serif;color:var(--gold);margin-bottom:4px;font-size:0.95rem;">
             ✂️ Novo agendamento!
         </div>
-        <div style="color:#f0f0f0;font-size:0.9rem;">${dados.cliente_nome}</div>
-        <div style="color:#aaa;font-size:0.85rem;">
+        <div style="color:var(--text);font-size:0.88rem;">${dados.cliente_nome}</div>
+        <div style="color:var(--text-muted);font-size:0.8rem;">
             ${dados.servico} · ${dados.hora_inicio} · ${dados.data}
         </div>
     `;
 
-    // Animação CSS
     const style = document.createElement("style");
     style.textContent = `
         @keyframes slideIn {
@@ -1023,10 +971,10 @@ function mostrarToast(dados) {
     `;
     document.head.appendChild(style);
     document.body.appendChild(toast);
-
-    // Remove após 5 segundos
     setTimeout(() => toast.remove(), 5000);
 }
+
+// ─── PUSH NOTIFICATIONS ───────────────────────────────
 
 async function iniciarPushNotifications() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -1035,36 +983,29 @@ async function iniciarPushNotifications() {
     }
 
     try {
-        // Registra o Service Worker
         const registro = await navigator.serviceWorker.register("/sw.js");
         console.log("✅ Service Worker registrado");
 
-        // Pede permissão
         const permissao = await Notification.requestPermission();
         if (permissao !== "granted") {
             console.warn("Permissão de notificação negada");
             return;
         }
 
-        // Pega a chave pública VAPID do servidor
         const VAPID_PUBLIC_KEY =
             "BIFNjk8xKTaih0Zggn1FBSVf0MDK6QbW5ShXLqfWMpIXa3ZL3qvQ8X9L24RnwO_YvYYPIZ9KztMVFVhT-kJCNiE";
 
-        // Converte a chave para Uint8Array
         const chaveUint8 = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-        // Verifica se já tem subscription ativa
         let subscription = await registro.pushManager.getSubscription();
 
         if (!subscription) {
-            // Cria nova subscription
             subscription = await registro.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: chaveUint8,
             });
         }
 
-        // Envia subscription para o backend
         await fetch(`${API}/push/subscription`, {
             method: "POST",
             headers,
@@ -1077,7 +1018,6 @@ async function iniciarPushNotifications() {
     }
 }
 
-// Utilitário para converter chave VAPID
 function urlBase64ToUint8Array(base64String) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding)

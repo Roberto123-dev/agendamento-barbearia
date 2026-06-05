@@ -14,10 +14,7 @@ let datasBloqueadas = new Set(); // datas específicas bloqueadas ex: "2026-06-2
 
 function toggleCalendarioCliente() {
     const cal = document.getElementById("calendario-cliente");
-    cal.style.display =
-        cal.style.display === "none" || cal.style.display === ""
-            ? "block"
-            : "none";
+    cal.style.display = cal.style.display === "block" ? "none" : "block";
 }
 
 function fecharCalendarioCliente() {
@@ -311,58 +308,62 @@ function atualizarBotao() {
     btn.disabled = !slotSelecionado || !nome || !tel;
 }
 
-document
-    .getElementById("form-agendamento")
-    .addEventListener("submit", async (e) => {
-        e.preventDefault();
+// Adicione no app.js — substitui o form submit
+async function confirmarAgendamento() {
+    const body = {
+        barbeiro_id: parseInt(document.getElementById("barbeiro").value),
+        servico_id: parseInt(document.getElementById("servico").value),
+        cliente_nome: document.getElementById("cliente-nome").value.trim(),
+        cliente_telefone: document
+            .getElementById("cliente-telefone")
+            .value.trim(),
+        data: getDataClienteFormatada(),
+        hora_inicio: slotSelecionado,
+    };
 
-        const body = {
-            barbeiro_id: parseInt(document.getElementById("barbeiro").value),
-            servico_id: parseInt(document.getElementById("servico").value),
-            cliente_nome: document.getElementById("cliente-nome").value.trim(),
-            cliente_telefone: document
-                .getElementById("cliente-telefone")
-                .value.trim(),
-            data: getDataClienteFormatada(),
-            hora_inicio: slotSelecionado,
-        };
-
-        const res = await fetch(`${API}/agendamentos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-
-        const dados = await res.json();
-
-        if (!res.ok) {
-            alert(dados.erro || "Erro ao agendar");
-            return;
-        }
-
-        document.getElementById("form-agendamento").classList.add("hidden");
-        document.getElementById("confirmacao").classList.remove("hidden");
-        document.getElementById("confirmacao-detalhes").innerHTML = `
-    <strong>${body.cliente_nome}</strong><br/>
-    ${document.getElementById("servico").selectedOptions[0].text.split(" —")[0]}<br/>
-    📅 ${document.getElementById("data-cliente-texto").textContent}<br/>
-    🕐 ${body.hora_inicio}<br/>
-    💈 ${document.getElementById("barbeiro").selectedOptions[0].text}
-  `;
+    const res = await fetch(`${API}/agendamentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
     });
 
+    const dados = await res.json();
+
+    if (!res.ok) {
+        alert(dados.erro || "Erro ao agendar");
+        return;
+    }
+
+    document.getElementById("form-agendamento").classList.add("hidden");
+    document.getElementById("confirmacao").classList.remove("hidden");
+    document.getElementById("confirmacao-detalhes").innerHTML = `
+        <strong>${body.cliente_nome}</strong><br/>
+        ${document.getElementById("servico").selectedOptions[0].text.split(" —")[0]}<br/>
+        📅 ${document.getElementById("data-cliente-texto").textContent}<br/>
+        🕐 ${body.hora_inicio}<br/>
+        💈 ${document.getElementById("barbeiro").selectedOptions[0].text}
+    `;
+}
+
 function resetarFormulario() {
-    document.getElementById("form-agendamento").reset();
-    document.getElementById("form-agendamento").classList.remove("hidden");
-    document.getElementById("confirmacao").classList.add("hidden");
+    // Limpa os campos manualmente (não tem form.reset())
+    document.getElementById("barbeiro").selectedIndex = 0;
+    document.getElementById("servico").selectedIndex = 0;
+    document.getElementById("cliente-nome").value = "";
+    document.getElementById("cliente-telefone").value = "";
     document.getElementById("slots").innerHTML =
         '<p class="hint">Selecione barbeiro, serviço e data</p>';
     document.getElementById("data-cliente-texto").textContent =
         "Selecione uma data";
+    document.getElementById("calendario-cliente").style.display = "none";
+
     dataClienteSelecionada = null;
     slotSelecionado = null;
     atualizarBotao();
     renderCalendarioCliente();
+
+    document.getElementById("form-agendamento").classList.remove("hidden");
+    document.getElementById("confirmacao").classList.add("hidden");
 }
 
 document.getElementById("barbeiro").addEventListener("change", () => {

@@ -3,201 +3,881 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Barbearia — Agendamento</title>
-        <link rel="stylesheet" href="style.css" />
-    </head>
-    <body>
-        <header>
-            <h1>✂️ BARBEARIA</h1>
-            <p>Agende seu horário de forma rápida e fácil</p>
-        </header>
+        <title>Barbershop — Agende seu horário</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --gold: #c9a84c;
+                --gold-light: #e2c06a;
+                --gold-dim: #8a6e2f;
+                --black: #0a0a0a;
+                --dark: #111111;
+                --dark2: #1a1a1a;
+                --dark3: #222222;
+                --border: #2a2a2a;
+                --text: #f0ece4;
+                --text-muted: #888070;
+                --red: #c0392b;
+            }
 
-        <main>
-            <form id="form-agendamento">
-                <div class="campo">
-                    <label>Barbeiro</label>
-                    <select id="barbeiro" required>
-                        <option value="">Selecione...</option>
-                    </select>
-                </div>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
 
-                <div class="campo">
-                    <label>Serviço</label>
-                    <select id="servico" required>
-                        <option value="">Selecione...</option>
-                    </select>
-                </div>
+            body {
+                font-family: "DM Sans", sans-serif;
+                background: var(--black);
+                color: var(--text);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
 
-                <div class="campo">
-                    <label>Data</label>
-                    <div class="calendario-wrapper">
-                        <div
-                            id="data-trigger"
-                            onclick="toggleCalendarioCliente()"
-                            style="
-                                padding: 12px 16px;
-                                background: #1a1a1a;
-                                border: 1px solid #333;
-                                border-radius: 8px;
-                                cursor: pointer;
-                                color: #f0f0f0;
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                            "
-                        >
-                            <span id="data-cliente-texto"
-                                >Selecione uma data</span
-                            >
-                            <span>📅</span>
-                        </div>
+            /* ── NOISE TEXTURE ── */
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+                pointer-events: none;
+                z-index: 0;
+                opacity: 0.4;
+            }
 
-                        <div id="calendario-cliente" class="calendario-popup">
-                            <div
-                                style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    margin-bottom: 16px;
-                                "
-                            >
-                                <button
-                                    onclick="mudarMesCliente(-1)"
-                                    style="
-                                        background: transparent;
-                                        border: none;
-                                        color: #c9a84c;
-                                        font-size: 1.2rem;
-                                        cursor: pointer;
-                                        padding: 4px 8px;
-                                    "
-                                >
-                                    ‹
-                                </button>
-                                <span
-                                    id="mes-ano-cliente"
-                                    style="font-weight: bold; color: #f0f0f0"
-                                ></span>
-                                <button
-                                    onclick="mudarMesCliente(1)"
-                                    style="
-                                        background: transparent;
-                                        border: none;
-                                        color: #c9a84c;
-                                        font-size: 1.2rem;
-                                        cursor: pointer;
-                                        padding: 4px 8px;
-                                    "
-                                >
-                                    ›
-                                </button>
-                            </div>
-                            <div
-                                id="cabecalho-semana-cliente"
-                                style="
-                                    display: grid;
-                                    grid-template-columns: repeat(7, 1fr);
-                                    gap: 4px;
-                                    margin-bottom: 8px;
-                                "
-                            ></div>
-                            <div
-                                id="dias-calendario-cliente"
-                                style="
-                                    display: grid;
-                                    grid-template-columns: repeat(7, 1fr);
-                                    gap: 4px;
-                                "
-                            ></div>
-                        </div>
-                    </div>
-                </div>
+            /* ── HERO HEADER ── */
+            header {
+                position: relative;
+                background: var(--dark);
+                border-bottom: 1px solid var(--border);
+                overflow: hidden;
+            }
 
-                <div class="campo">
-                    <label>Horário disponível</label>
-                    <div id="slots" class="slots-container">
-                        <p class="hint">Selecione barbeiro, serviço e data</p>
-                    </div>
-                </div>
+            .header-stripe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--gold),
+                    var(--gold-light),
+                    var(--gold),
+                    transparent
+                );
+            }
 
-                <div class="campo">
-                    <label>Seu nome</label>
-                    <input
-                        type="text"
-                        id="cliente-nome"
-                        placeholder="Nome completo"
-                        required
-                    />
-                </div>
+            .header-inner {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 40px 24px 36px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0;
+                position: relative;
+                z-index: 1;
+            }
 
-                <div class="campo">
-                    <label>Seu telefone</label>
-                    <input
-                        type="tel"
-                        id="cliente-telefone"
-                        placeholder="(21) 99999-9999"
-                        required
-                    />
-                </div>
+            .logo-wrap {
+                width: 110px;
+                height: 110px;
+                border-radius: 50%;
+                background: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                border: 3px solid var(--gold);
+                box-shadow:
+                    0 0 0 6px rgba(201, 168, 76, 0.12),
+                    0 12px 40px rgba(0, 0, 0, 0.6);
+                margin-bottom: 20px;
+                animation: logoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+            }
 
-                <button type="submit" id="btn-agendar" disabled>
-                    Confirmar Agendamento
-                </button>
-            </form>
+            @keyframes logoIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.7) rotate(-10deg);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1) rotate(0deg);
+                }
+            }
 
-            <div id="confirmacao" class="confirmacao hidden">
-                <div class="confirmacao-box">
-                    <span class="icone">✅</span>
-                    <h2>Agendamento confirmado!</h2>
-                    <p id="confirmacao-detalhes"></p>
-                    <button onclick="resetarFormulario()">
-                        Fazer novo agendamento
-                    </button>
-                </div>
-            </div>
-        </main>
+            .logo-wrap img {
+                width: 96px;
+                height: 96px;
+                object-fit: contain;
+            }
 
-        <footer
-            style="
+            .header-title {
+                font-family: "Bebas Neue", sans-serif;
+                font-size: 3rem;
+                letter-spacing: 0.12em;
+                color: var(--text);
+                line-height: 1;
+                animation: fadeUp 0.7s 0.2s both;
+            }
+
+            .header-subtitle {
+                font-family: "Cormorant Garamond", serif;
+                font-style: italic;
+                font-size: 1rem;
+                color: var(--gold);
+                letter-spacing: 0.25em;
+                text-transform: uppercase;
+                margin-top: 6px;
+                animation: fadeUp 0.7s 0.35s both;
+            }
+
+            .header-divider {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-top: 16px;
+                animation: fadeUp 0.7s 0.45s both;
+            }
+
+            .header-divider::before,
+            .header-divider::after {
+                content: "";
+                height: 1px;
+                width: 60px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--gold-dim)
+                );
+            }
+            .header-divider::after {
+                background: linear-gradient(
+                    90deg,
+                    var(--gold-dim),
+                    transparent
+                );
+            }
+
+            .diamond {
+                width: 6px;
+                height: 6px;
+                background: var(--gold);
+                transform: rotate(45deg);
+            }
+
+            @keyframes fadeUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* ── MAIN ── */
+            main {
+                max-width: 560px;
+                margin: 0 auto;
+                padding: 40px 20px 80px;
+                position: relative;
+                z-index: 1;
+            }
+
+            /* ── SECTION LABEL ── */
+            .section-label {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 0.72rem;
+                letter-spacing: 0.3em;
+                text-transform: uppercase;
+                color: var(--gold);
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .section-label::after {
+                content: "";
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+            /* ── CAMPO ── */
+            .campo {
+                margin-bottom: 24px;
+            }
+
+            label {
+                display: block;
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                margin-bottom: 8px;
+                letter-spacing: 0.2em;
+                text-transform: uppercase;
+                font-weight: 500;
+            }
+
+            select,
+            input[type="text"],
+            input[type="tel"] {
+                width: 100%;
+                padding: 14px 18px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                color: var(--text);
+                font-size: 0.95rem;
+                font-family: "DM Sans", sans-serif;
+                outline: none;
+                transition:
+                    border-color 0.2s,
+                    box-shadow 0.2s;
+                appearance: none;
+                -webkit-appearance: none;
+            }
+
+            select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888070' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 16px center;
+                padding-right: 44px;
+            }
+
+            select:focus,
+            input:focus {
+                border-color: var(--gold-dim);
+                box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08);
+            }
+
+            select option {
+                background: var(--dark2);
+            }
+
+            /* ── CALENDÁRIO ── */
+            .calendario-wrapper {
+                position: relative;
+            }
+
+            .data-trigger {
+                width: 100%;
+                padding: 14px 18px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                cursor: pointer;
+                color: var(--text);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: border-color 0.2s;
+                font-size: 0.95rem;
+                font-family: "DM Sans", sans-serif;
+            }
+
+            .data-trigger:hover {
+                border-color: var(--gold-dim);
+            }
+
+            .data-trigger .cal-icon {
+                color: var(--gold);
+                font-size: 1.1rem;
+            }
+
+            .calendario-popup {
+                display: none;
+                position: relative; /* 👈 fluxo normal, não absolute */
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 20px;
+                z-index: 50;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+                margin-top: 8px;
+                margin-bottom: 16px;
+            }
+
+            .cal-nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+
+            .cal-nav button {
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--gold);
+                width: 32px;
+                height: 32px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: all 0.15s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .cal-nav button:hover {
+                background: var(--dark3);
+                border-color: var(--gold-dim);
+            }
+
+            #mes-ano-cliente {
+                font-family: "Playfair Display", serif;
+                font-size: 0.95rem;
+                color: var(--text);
+                letter-spacing: 0.05em;
+            }
+
+            .cal-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 3px;
+            }
+
+            .cal-head-day {
+                text-align: center;
+                font-size: 0.68rem;
+                color: var(--text-muted);
+                padding: 4px 0 8px;
+                letter-spacing: 0.1em;
+            }
+
+            .dia-btn {
+                aspect-ratio: 1;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 0.82rem;
+                font-family: "DM Sans", sans-serif;
+                transition: all 0.15s;
+                position: relative;
+            }
+
+            .dia-btn:hover:not(:disabled) {
+                background: var(--dark3);
+                color: var(--gold-light);
+            }
+
+            .dia-btn.hoje {
+                border: 1px solid var(--gold-dim);
+                color: var(--gold);
+            }
+
+            .dia-btn.selecionado {
+                background: var(--gold) !important;
+                color: #000 !important;
+                font-weight: 700;
+            }
+
+            .dia-btn:disabled {
+                color: #333;
+                cursor: not-allowed;
+            }
+
+            .dia-btn.domingo {
+                color: #6b3030;
+            }
+            .dia-btn.domingo:disabled {
+                color: #2a1a1a;
+            }
+
+            /* ── SLOTS ── */
+            .slots-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 8px;
+                min-height: 48px;
+            }
+
+            .hint {
+                color: var(--text-muted);
+                font-size: 0.88rem;
+                font-style: italic;
+                grid-column: 1/-1;
+                padding: 8px 0;
+            }
+
+            .slot {
+                padding: 10px 8px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.88rem;
+                font-family: "DM Sans", sans-serif;
+                color: var(--text);
+                text-align: center;
+                transition: all 0.15s;
+            }
+
+            .slot:hover {
+                border-color: var(--gold-dim);
+                color: var(--gold-light);
+                background: var(--dark3);
+            }
+
+            .slot.selecionado {
+                background: var(--gold);
+                border-color: var(--gold);
+                color: #000;
+                font-weight: 700;
+            }
+
+            /* ── SEPARADOR ── */
+            .form-divider {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                margin: 32px 0 28px;
+            }
+
+            .form-divider::before,
+            .form-divider::after {
+                content: "";
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+            .form-divider-inner {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .form-divider-inner .d {
+                width: 4px;
+                height: 4px;
+                background: var(--gold-dim);
+                transform: rotate(45deg);
+            }
+
+            /* ── BOTÃO CONFIRMAR ── */
+            .btn-confirmar {
+                width: 100%;
+                padding: 16px;
+                background: var(--gold);
+                color: #0a0a0a;
+                font-size: 0.85rem;
+                font-weight: 700;
+                font-family: "DM Sans", sans-serif;
+                letter-spacing: 0.15em;
+                text-transform: uppercase;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-top: 12px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .btn-confirmar::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    transparent 60%
+                );
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+
+            .btn-confirmar:hover::before {
+                opacity: 1;
+            }
+            .btn-confirmar:hover {
+                background: var(--gold-light);
+                transform: translateY(-1px);
+                box-shadow: 0 8px 24px rgba(201, 168, 76, 0.3);
+            }
+            .btn-confirmar:disabled {
+                opacity: 0.3;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+            /* ── CONFIRMAÇÃO ── */
+            .confirmacao {
+                text-align: center;
+                padding: 20px 0;
+            }
+
+            .confirmacao-box {
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 48px 32px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .confirmacao-box::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--gold),
+                    transparent
+                );
+            }
+
+            .confirmacao-icon {
+                font-size: 3.5rem;
+                margin-bottom: 20px;
+                animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+            }
+
+            @keyframes popIn {
+                from {
+                    transform: scale(0);
+                    opacity: 0;
+                }
+                to {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+
+            .confirmacao-box h2 {
+                font-family: "Playfair Display", serif;
+                font-size: 1.8rem;
+                color: var(--gold);
+                margin-bottom: 12px;
+            }
+
+            .confirmacao-box p {
+                color: var(--text-muted);
+                line-height: 1.7;
+                margin-bottom: 32px;
+                font-size: 0.95rem;
+            }
+
+            .confirmacao-box p strong {
+                color: var(--text);
+            }
+
+            .btn-novo {
+                padding: 14px 32px;
+                background: transparent;
+                border: 1px solid var(--gold);
+                color: var(--gold);
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.82rem;
+                letter-spacing: 0.15em;
+                text-transform: uppercase;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .btn-novo:hover {
+                background: var(--gold);
+                color: #000;
+            }
+
+            /* ── FOOTER ── */
+            footer {
                 text-align: center;
                 padding: 24px;
-                color: #555;
-                font-size: 0.85rem;
-                margin-top: 40px;
-            "
-        >
-            Barbearia © 2026
-        </footer>
+                color: #333;
+                font-size: 0.78rem;
+                letter-spacing: 0.1em;
+                border-top: 1px solid var(--border);
+                position: relative;
+                z-index: 1;
+            }
 
-        <!-- Botão WhatsApp fixo -->
-        <a
-            id="btn-whatsapp"
-            href="#"
-            target="_blank"
-            style="
+            /* ── WHATSAPP ── */
+            .btn-whatsapp {
                 position: fixed;
-                bottom: 24px;
-                right: 24px;
-                background: #25d366;
-                color: #fff;
+                bottom: 28px;
+                right: 28px;
                 width: 56px;
                 height: 56px;
+                background: #25d366;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 text-decoration: none;
-                box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+                box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+                transition:
+                    transform 0.2s,
+                    box-shadow 0.2s;
                 z-index: 999;
-                transition: transform 0.2s;
-            "
-            onmouseover="this.style.transform = 'scale(1.1)'"
-            onmouseout="this.style.transform = 'scale(1)'"
-        >
+            }
+
+            .btn-whatsapp:hover {
+                transform: scale(1.1);
+                box-shadow: 0 8px 28px rgba(37, 211, 102, 0.5);
+            }
+
+            .hidden {
+                display: none !important;
+            }
+
+            .carregando {
+                color: var(--text-muted);
+                font-size: 0.88rem;
+                font-style: italic;
+                grid-column: 1/-1;
+            }
+
+            /* ── ANIMAÇÃO ENTRADA ── */
+            .form-card {
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--gold);
+                border-radius: 8px;
+                padding: 28px 24px;
+                margin-bottom: 16px;
+                animation: fadeUp 0.6s 0.1s both;
+                position: relative;
+                overflow: visible;
+            }
+
+            .form-card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 3px;
+                height: 100%;
+                background: linear-gradient(180deg, var(--gold), transparent);
+            }
+
+            /* ── PAINEL LINK ── */
+            .painel-link {
+                display: block;
+                text-align: center;
+                color: var(--text-muted);
+                font-size: 0.78rem;
+                letter-spacing: 0.1em;
+                text-decoration: none;
+                margin-top: 32px;
+                transition: color 0.2s;
+            }
+
+            .painel-link:hover {
+                color: var(--gold);
+            }
+
+            /* ── DOT INDICATORS ── */
+            .dot-green {
+                position: absolute;
+                bottom: 3px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: #4caf50;
+                display: block;
+            }
+
+            .dot-red {
+                position: absolute;
+                bottom: 3px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: var(--red);
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="header-stripe"></div>
+            <div class="header-inner">
+                <div class="logo-wrap">
+                    <img src="/assets/images/10.png" alt="Barbershop Logo" />
+                </div>
+                <h1 class="header-title">Barbershop</h1>
+                <p class="header-subtitle">Premium Cut &amp; Shave</p>
+                <div class="header-divider">
+                    <div class="diamond"></div>
+                    <div class="diamond"></div>
+                    <div class="diamond"></div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- FORMULÁRIO -->
+            <div id="form-agendamento">
+                <div class="form-card">
+                    <div class="section-label">Profissional &amp; Serviço</div>
+
+                    <div class="campo">
+                        <label>Barbeiro</label>
+                        <select id="barbeiro">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+
+                    <div class="campo" style="margin-bottom: 0">
+                        <label>Serviço</label>
+                        <select id="servico">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Card Data & Horário — SEM o popup dentro -->
+                <div class="form-card">
+                    <div class="section-label">Data &amp; Horário</div>
+
+                    <div class="campo">
+                        <label>Data</label>
+                        <div
+                            id="data-trigger"
+                            class="data-trigger"
+                            onclick="toggleCalendarioCliente()"
+                        >
+                            <span id="data-cliente-texto"
+                                >Selecione uma data</span
+                            >
+                            <span class="cal-icon">◈</span>
+                        </div>
+                    </div>
+
+                    <!-- Calendário FORA do card, direto no fluxo -->
+                    <div
+                        id="calendario-cliente"
+                        class="calendario-popup"
+                        style="display: none"
+                    >
+                        <div class="cal-nav">
+                            <button onclick="mudarMesCliente(-1)">‹</button>
+                            <span id="mes-ano-cliente"></span>
+                            <button onclick="mudarMesCliente(1)">›</button>
+                        </div>
+                        <div
+                            id="cabecalho-semana-cliente"
+                            style="
+                                display: grid;
+                                grid-template-columns: repeat(7, 1fr);
+                                gap: 3px;
+                                margin-bottom: 4px;
+                            "
+                        ></div>
+                        <div
+                            id="dias-calendario-cliente"
+                            style="
+                                display: grid;
+                                grid-template-columns: repeat(7, 1fr);
+                                gap: 3px;
+                            "
+                        ></div>
+                    </div>
+
+                    <div class="campo" style="margin-bottom: 0">
+                        <label>Horário disponível</label>
+                        <div class="slots-container" id="slots">
+                            <p class="hint">
+                                Selecione barbeiro, serviço e data
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-divider">
+                    <div class="form-divider-inner">
+                        <div class="d"></div>
+                        <div class="d"></div>
+                        <div class="d"></div>
+                    </div>
+                </div>
+
+                <div class="form-card">
+                    <div class="section-label">Seus dados</div>
+
+                    <div class="campo">
+                        <label>Seu nome</label>
+                        <input
+                            type="text"
+                            id="cliente-nome"
+                            placeholder="Nome completo"
+                        />
+                    </div>
+
+                    <div class="campo" style="margin-bottom: 0">
+                        <label>Seu telefone</label>
+                        <input
+                            type="tel"
+                            id="cliente-telefone"
+                            placeholder="(21) 99999-9999"
+                        />
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-agendar"
+                    class="btn-confirmar"
+                    disabled
+                    onclick="confirmarAgendamento()"
+                >
+                    Confirmar Agendamento
+                </button>
+
+                <a href="/painel.html" class="painel-link"
+                    >Área do barbeiro →</a
+                >
+            </div>
+
+            <!-- CONFIRMAÇÃO -->
+            <div id="confirmacao" class="confirmacao hidden">
+                <div class="confirmacao-box">
+                    <div class="confirmacao-icon">✂️</div>
+                    <h2>Agendado!</h2>
+                    <p id="confirmacao-detalhes"></p>
+                    <button class="btn-novo" onclick="resetarFormulario()">
+                        Novo agendamento
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <span style="color: #444; letter-spacing: 0.2em">✦</span>
+            &nbsp; Barbershop &copy; 2026 &nbsp;
+            <span style="color: #444; letter-spacing: 0.2em">✦</span>
+        </footer>
+
+        <a id="btn-whatsapp" href="#" target="_blank" class="btn-whatsapp">
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="28"
-                height="28"
+                width="26"
+                height="26"
                 viewBox="0 0 24 24"
                 fill="white"
             >
@@ -207,6 +887,6 @@
             </svg>
         </a>
 
-        <script src="app.js"></script>
+        <script src="/app.js"></script>
     </body>
 </html>

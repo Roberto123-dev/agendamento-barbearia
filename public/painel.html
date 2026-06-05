@@ -1,301 +1,835 @@
-<!-- PAINEL.HTML -->
 <!doctype html>
 <html lang="pt-BR">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Painel do Barbeiro</title>
-        <link rel="stylesheet" href="style.css" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap"
+            rel="stylesheet"
+        />
         <style>
-            .painel-header {
+            :root {
+                --gold: #c9a84c;
+                --gold-light: #e2c06a;
+                --gold-dim: #8a6e2f;
+                --black: #0a0a0a;
+                --dark: #111111;
+                --dark2: #1a1a1a;
+                --dark3: #222222;
+                --border: #2a2a2a;
+                --text: #f0ece4;
+                --text-muted: #888070;
+                --red: #c0392b;
+                --green: #2a5c2a;
+                --green-text: #5bd55b;
+                --blue-bg: #1a3a5c;
+                --blue-text: #5b9bd5;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: "DM Sans", sans-serif;
+                background: var(--black);
+                color: var(--text);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+                pointer-events: none;
+                z-index: 0;
+                opacity: 0.4;
+            }
+
+            /* ── HEADER ── */
+            header {
+                position: relative;
+                background: var(--dark);
+                border-bottom: 1px solid var(--border);
+                overflow: hidden;
+            }
+
+            .header-stripe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    var(--gold),
+                    var(--gold-light),
+                    var(--gold),
+                    transparent
+                );
+            }
+
+            .header-inner {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 28px 24px 24px;
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
-                margin-bottom: 24px;
+                gap: 16px;
+                position: relative;
+                z-index: 1;
             }
-            .filtros {
+
+            .logo-wrap {
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: #fff;
                 display: flex;
-                gap: 12px;
-                margin-bottom: 24px;
-                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                border: 2px solid var(--gold);
+                box-shadow: 0 0 0 4px rgba(201, 168, 76, 0.12);
+                flex-shrink: 0;
             }
+
+            .logo-wrap img {
+                width: 48px;
+                height: 48px;
+                object-fit: contain;
+            }
+
+            .header-text {
+                flex: 1;
+            }
+
+            .header-title {
+                font-family: "Bebas Neue", sans-serif;
+                font-size: 1.6rem;
+                letter-spacing: 0.1em;
+                color: var(--text);
+                line-height: 1;
+            }
+
+            .header-subtitle {
+                font-family: "Cormorant Garamond", serif;
+                font-style: italic;
+                font-size: 0.85rem;
+                color: var(--gold);
+                letter-spacing: 0.15em;
+                margin-top: 3px;
+            }
+
+            .header-actions {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .btn-header {
+                padding: 7px 14px;
+                background: transparent;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.78rem;
+                font-family: "DM Sans", sans-serif;
+                letter-spacing: 0.08em;
+                transition: all 0.15s;
+                white-space: nowrap;
+            }
+
+            .btn-gold {
+                border: 1px solid var(--gold);
+                color: var(--gold);
+            }
+            .btn-gold:hover {
+                background: var(--gold);
+                color: #000;
+            }
+
+            .btn-red {
+                border: 1px solid var(--red);
+                color: var(--red);
+            }
+            .btn-red:hover {
+                background: var(--red);
+                color: #fff;
+            }
+
+            .btn-muted {
+                border: 1px solid #444;
+                color: #888;
+            }
+            .btn-muted:hover {
+                border-color: #666;
+                color: #aaa;
+            }
+
+            /* ── MAIN ── */
+            main {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 28px 20px 80px;
+                position: relative;
+                z-index: 1;
+            }
+
+            /* ── BARBEIRO ── */
+            .campo {
+                margin-bottom: 20px;
+            }
+
+            label {
+                display: block;
+                font-size: 0.68rem;
+                color: var(--text-muted);
+                margin-bottom: 6px;
+                letter-spacing: 0.2em;
+                text-transform: uppercase;
+                font-weight: 500;
+            }
+
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="date"],
+            input[type="time"],
+            select {
+                width: 100%;
+                padding: 12px 16px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                color: var(--text);
+                font-size: 0.95rem;
+                font-family: "DM Sans", sans-serif;
+                outline: none;
+                transition:
+                    border-color 0.2s,
+                    box-shadow 0.2s;
+            }
+
+            input:focus,
+            select:focus {
+                border-color: var(--gold-dim);
+                box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08);
+            }
+
+            /* ── ABAS ── */
+            .abas-wrapper {
+                display: flex;
+                gap: 0;
+                margin-bottom: 24px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .aba-btn {
+                padding: 10px 18px;
+                background: transparent;
+                border: none;
+                border-bottom: 2px solid transparent;
+                color: var(--text-muted);
+                cursor: pointer;
+                font-size: 0.82rem;
+                font-family: "DM Sans", sans-serif;
+                letter-spacing: 0.08em;
+                transition: all 0.15s;
+            }
+
+            .aba-btn.ativa {
+                border-bottom-color: var(--gold);
+                color: var(--gold);
+            }
+
+            /* ── CARDS GERAIS ── */
+            .form-card {
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-left: 3px solid var(--gold);
+                border-radius: 4px;
+                padding: 24px 20px;
+                margin-bottom: 14px;
+                position: relative;
+            }
+
+            .section-label {
+                font-family: "Cormorant Garamond", serif;
+                font-size: 0.68rem;
+                letter-spacing: 0.3em;
+                text-transform: uppercase;
+                color: var(--gold);
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .section-label::after {
+                content: "";
+                flex: 1;
+                height: 1px;
+                background: var(--border);
+            }
+
+            /* ── RESUMO ── */
             .resumo {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
-                gap: 12px;
-                margin-bottom: 28px;
+                gap: 10px;
+                margin-bottom: 20px;
             }
+
             .card-resumo {
-                background: #1a1a1a;
-                border: 1px solid #333;
-                border-radius: 10px;
-                padding: 16px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 16px 12px;
                 text-align: center;
             }
+
             .card-resumo .numero {
-                font-size: 2rem;
-                font-weight: bold;
-                color: #c9a84c;
+                font-family: "Playfair Display", serif;
+                font-size: 1.8rem;
+                font-weight: 700;
+                color: var(--gold);
+                line-height: 1;
             }
+
             .card-resumo .legenda {
-                font-size: 0.8rem;
-                color: #aaa;
-                margin-top: 4px;
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                margin-top: 6px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
             }
-            .lista-agendamentos {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
+
+            /* ── CARDS AGENDAMENTO ── */
             .card-agendamento {
-                background: #1a1a1a;
-                border: 1px solid #333;
-                border-radius: 10px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
                 padding: 16px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 gap: 12px;
+                margin-bottom: 10px;
+                transition: border-color 0.15s;
             }
+
+            .card-agendamento:hover {
+                border-color: #333;
+            }
+
             .card-agendamento.cancelado {
-                opacity: 0.4;
+                opacity: 0.35;
             }
+
             .card-agendamento.concluido {
-                border-color: #2a5c2a;
+                border-color: #1e3a1e;
+                border-left: 3px solid var(--green-text);
             }
+
+            .card-agendamento.confirmado {
+                border-left: 3px solid var(--gold-dim);
+            }
+
             .info-agendamento .hora {
-                font-size: 1.3rem;
-                font-weight: bold;
-                color: #c9a84c;
+                font-family: "Playfair Display", serif;
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: var(--gold);
+                margin-bottom: 4px;
             }
+
             .info-agendamento .cliente {
-                font-size: 1rem;
+                font-size: 0.95rem;
                 margin: 4px 0;
-            }
-            .info-agendamento .detalhe {
-                font-size: 0.85rem;
-                color: #aaa;
-            }
-            .acoes {
                 display: flex;
-                flex-direction: column;
+                align-items: center;
                 gap: 8px;
             }
-            .btn-concluir {
-                padding: 8px 16px;
-                background: #2a5c2a;
-                color: #fff;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 0.85rem;
-                white-space: nowrap;
+
+            .info-agendamento .detalhe {
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                margin-top: 4px;
             }
-            .btn-cancelar {
-                padding: 8px 16px;
-                background: transparent;
-                color: #c0392b;
-                border: 1px solid #c0392b;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 0.85rem;
-                white-space: nowrap;
-            }
-            .btn-concluir:hover {
-                opacity: 0.85;
-            }
-            .btn-cancelar:hover {
-                background: #c0392b;
-                color: #fff;
-            }
+
             .badge {
                 display: inline-block;
-                padding: 3px 10px;
+                padding: 2px 10px;
                 border-radius: 20px;
-                font-size: 0.75rem;
-                font-weight: bold;
+                font-size: 0.68rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                margin-top: 6px;
             }
+
             .badge.confirmado {
-                background: #1a3a5c;
-                color: #5b9bd5;
+                background: var(--blue-bg);
+                color: var(--blue-text);
             }
             .badge.concluido {
                 background: #1a3a1a;
-                color: #5bd55b;
+                color: var(--green-text);
             }
             .badge.cancelado {
                 background: #3a1a1a;
                 color: #d55b5b;
             }
-            .vazio {
-                text-align: center;
-                color: #555;
-                padding: 40px;
-            }
-            .nav-painel {
+
+            .acoes {
                 display: flex;
-                gap: 16px;
-                margin-bottom: 28px;
+                flex-direction: column;
+                gap: 6px;
+                flex-shrink: 0;
             }
-            .nav-painel a {
-                color: #aaa;
-                text-decoration: none;
-                font-size: 0.9rem;
-                padding-bottom: 4px;
-                border-bottom: 2px solid transparent;
-            }
-            .nav-painel a.ativo {
-                color: #c9a84c;
-                border-bottom-color: #c9a84c;
-            }
-            .dia-btn {
-                aspect-ratio: 1;
+
+            .btn-concluir {
+                padding: 7px 14px;
+                background: var(--green);
+                color: #fff;
                 border: none;
-                border-radius: 6px;
-                background: transparent;
-                color: #f0f0f0;
+                border-radius: 4px;
                 cursor: pointer;
-                font-size: 0.85rem;
+                font-size: 0.78rem;
+                font-family: "DM Sans", sans-serif;
+                white-space: nowrap;
+                transition: opacity 0.15s;
+            }
+            .btn-concluir:hover {
+                opacity: 0.85;
+            }
+
+            .btn-cancelar {
+                padding: 7px 14px;
+                background: transparent;
+                color: var(--red);
+                border: 1px solid var(--red);
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.78rem;
+                font-family: "DM Sans", sans-serif;
+                white-space: nowrap;
                 transition: all 0.15s;
             }
-            .dia-btn:hover:not(:disabled) {
-                background: #333;
+            .btn-cancelar:hover {
+                background: var(--red);
+                color: #fff;
             }
-            .dia-btn.hoje {
-                border: 1px solid #c9a84c;
-                color: #c9a84c;
-            }
-            .dia-btn.selecionado {
-                background: #c9a84c !important;
-                color: #000 !important;
-                font-weight: bold;
-            }
-            .dia-btn:disabled {
+
+            .vazio {
+                text-align: center;
                 color: #444;
-                cursor: not-allowed;
+                padding: 48px 20px;
+                font-style: italic;
+                font-family: "Cormorant Garamond", serif;
+                font-size: 1.1rem;
+                letter-spacing: 0.05em;
             }
-            .dia-btn.domingo {
-                color: #c0392b;
-            }
+
+            /* ── CALENDÁRIO ── */
             .calendario-wrapper {
                 position: relative;
             }
+
+            .data-trigger {
+                width: 100%;
+                padding: 12px 16px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                cursor: pointer;
+                color: var(--text);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.95rem;
+                font-family: "DM Sans", sans-serif;
+                transition: border-color 0.2s;
+            }
+
+            .data-trigger:hover {
+                border-color: var(--gold-dim);
+            }
+
             .calendario-popup {
                 display: none;
-                position: absolute;
-                background: #1a1a1a;
-                border: 1px solid #333;
-                border-radius: 12px;
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 8px;
                 padding: 16px;
-                z-index: 50;
                 margin-top: 8px;
-                width: 300px;
-                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            }
+
+            .cal-nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            .cal-nav button {
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--gold);
+                width: 28px;
+                height: 28px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: all 0.15s;
+            }
+
+            .cal-nav button:hover {
+                background: var(--dark3);
+                border-color: var(--gold-dim);
+            }
+
+            .cal-mes {
+                font-family: "Playfair Display", serif;
+                font-size: 0.9rem;
+                color: var(--text);
+            }
+
+            .dia-btn {
+                aspect-ratio: 1;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 0.8rem;
+                font-family: "DM Sans", sans-serif;
+                transition: all 0.15s;
+                position: relative;
+            }
+
+            .dia-btn:hover:not(:disabled) {
+                background: var(--dark3);
+                color: var(--gold-light);
+            }
+            .dia-btn.hoje {
+                border: 1px solid var(--gold-dim);
+                color: var(--gold);
+            }
+            .dia-btn.selecionado {
+                background: var(--gold) !important;
+                color: #000 !important;
+                font-weight: 700;
+            }
+            .dia-btn:disabled {
+                color: #333;
+                cursor: not-allowed;
+            }
+            .dia-btn.domingo {
+                color: #6b3030;
+            }
+
+            /* ── BARRA SELEÇÃO ── */
+            .barra-selecao {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--dark2);
+                border: 1px solid var(--red);
+                border-radius: 8px;
+                padding: 12px 20px;
+                display: none;
+                align-items: center;
+                gap: 14px;
+                z-index: 99;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+                white-space: nowrap;
+            }
+
+            /* ── MODAL ── */
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 100;
+                padding: 20px;
+            }
+
+            .modal-box {
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-top: 2px solid var(--gold);
+                border-radius: 8px;
+                padding: 32px;
+                width: 100%;
+                max-width: 440px;
+            }
+
+            .modal-title {
+                font-family: "Playfair Display", serif;
+                font-size: 1.4rem;
+                color: var(--gold);
+                margin-bottom: 24px;
+            }
+
+            .erro-msg {
+                color: #d55b5b;
+                font-size: 0.85rem;
+                margin-bottom: 12px;
+                display: none;
+            }
+
+            /* ── HORÁRIOS ── */
+            .toggle-track {
+                width: 44px;
+                height: 24px;
+                border-radius: 12px;
+                position: relative;
+                cursor: pointer;
+                transition: background 0.2s;
+                flex-shrink: 0;
+            }
+
+            .toggle-thumb {
+                position: absolute;
+                top: 3px;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #fff;
+                transition: left 0.2s;
+            }
+
+            /* ── PERÍODO ── */
+            .periodo-grid {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .periodo-grid .campo {
+                flex: 1;
+                min-width: 140px;
+            }
+
+            /* ── BOTÕES GERAIS ── */
+            .btn-primary {
+                width: 100%;
+                padding: 13px;
+                background: var(--gold);
+                color: #0a0a0a;
+                font-size: 0.8rem;
+                font-weight: 700;
+                font-family: "DM Sans", sans-serif;
+                letter-spacing: 0.15em;
+                text-transform: uppercase;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-top: 8px;
+            }
+
+            .btn-primary:hover {
+                background: var(--gold-light);
+            }
+
+            .btn-outline-gold {
+                padding: 10px 20px;
+                background: transparent;
+                border: 1px solid var(--gold);
+                color: var(--gold);
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.78rem;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .btn-outline-gold:hover {
+                background: var(--gold);
+                color: #000;
+            }
+
+            .btn-outline-red {
+                padding: 10px 20px;
+                background: transparent;
+                border: 1px solid var(--red);
+                color: var(--red);
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.78rem;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .btn-outline-red:hover {
+                background: var(--red);
+                color: #fff;
+            }
+
+            .hidden {
+                display: none !important;
+            }
+
+            /* ── NAV ── */
+            .nav-link {
+                color: var(--text-muted);
+                text-decoration: none;
+                font-size: 0.78rem;
+                letter-spacing: 0.08em;
+                transition: color 0.15s;
+            }
+
+            .nav-link:hover {
+                color: var(--gold);
+            }
+
+            /* ── BARBEIRO ITEM MODAL ── */
+            .barbeiro-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 14px;
+                background: var(--dark);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                margin-bottom: 8px;
+            }
+
+            /* ── BLOQUEIO ITEM ── */
+            .bloqueio-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: var(--dark);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 10px 14px;
+                margin-bottom: 8px;
+            }
+
+            /* ── HORARIO ITEM ── */
+            .horario-item {
+                background: var(--dark2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 14px 16px;
+                margin-bottom: 8px;
+            }
+
+            .horario-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .horario-nome {
+                font-weight: 500;
+                font-size: 0.9rem;
+            }
+
+            .horario-status {
+                font-size: 0.78rem;
+                color: var(--text-muted);
+            }
+
+            /* ── FOOTER ── */
+            footer {
+                text-align: center;
+                padding: 20px;
+                color: #333;
+                font-size: 0.72rem;
+                letter-spacing: 0.1em;
+                border-top: 1px solid var(--border);
+                position: relative;
+                z-index: 1;
             }
         </style>
     </head>
     <body>
         <header>
-            <h1>✂️ Painel do Barbeiro</h1>
-            <p>Gerencie seus agendamentos</p>
-        </header>
-
-        <main>
-            <!-- Header com botões -->
-            <div class="painel-header">
-                <div class="nav-painel">
-                    <a href="index.html">← Página de agendamento</a>
+            <div class="header-stripe"></div>
+            <div class="header-inner">
+                <div class="logo-wrap">
+                    <img src="/assets/images/10.png" alt="Logo" />
                 </div>
-                <div style="display: flex; gap: 8px">
-                    <button
-                        onclick="abrirModal()"
-                        style="
-                            background: transparent;
-                            border: 1px solid #c9a84c;
-                            color: #c9a84c;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                        "
-                    >
+                <div class="header-text">
+                    <div class="header-title">Painel</div>
+                    <div class="header-subtitle" id="header-nome-barbeiro">
+                        Bem-vindo
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button onclick="abrirModal()" class="btn-header btn-gold">
                         + Barbeiro
                     </button>
                     <button
                         onclick="toggleModoSelecao()"
                         id="btn-selecao"
-                        style="
-                            background: transparent;
-                            border: 1px solid #c0392b;
-                            color: #c0392b;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                        "
+                        class="btn-header btn-red"
                     >
                         ☑ Selecionar
                     </button>
-                    <button
-                        onclick="logout()"
-                        style="
-                            background: transparent;
-                            border: 1px solid #555;
-                            color: #aaa;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                        "
-                    >
+                    <button onclick="logout()" class="btn-header btn-muted">
                         Sair
                     </button>
                 </div>
             </div>
+        </header>
 
-            <!-- Barra de ação da seleção -->
-            <div
-                id="barra-selecao"
-                style="
-                    display: none;
-                    position: fixed;
-                    bottom: 24px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #1a1a1a;
-                    border: 1px solid #c0392b;
-                    border-radius: 12px;
-                    padding: 14px 24px;
-                    display: none;
-                    align-items: center;
-                    gap: 16px;
-                    z-index: 99;
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-                "
-            >
-                <span id="texto-selecao" style="color: #aaa; font-size: 0.9rem"
+        <main>
+            <!-- Barra seleção -->
+            <div id="barra-selecao" class="barra-selecao">
+                <span
+                    id="texto-selecao"
+                    style="color: var(--text-muted); font-size: 0.85rem"
                     >0 selecionados</span
                 >
                 <button
                     onclick="limparSelecionados()"
                     style="
-                        background: #c0392b;
+                        background: var(--red);
                         border: none;
                         color: #fff;
-                        padding: 8px 20px;
-                        border-radius: 8px;
+                        padding: 7px 16px;
+                        border-radius: 4px;
                         cursor: pointer;
-                        font-weight: bold;
+                        font-family: &quot;DM Sans&quot;, sans-serif;
+                        font-size: 0.78rem;
+                        font-weight: 700;
                     "
                 >
-                    🗑 Apagar selecionados
+                    🗑 Apagar
                 </button>
                 <button
                     onclick="toggleModoSelecao()"
                     style="
                         background: transparent;
-                        border: 1px solid #555;
-                        color: #aaa;
-                        padding: 8px 16px;
-                        border-radius: 8px;
+                        border: 1px solid #444;
+                        color: #888;
+                        padding: 7px 14px;
+                        border-radius: 4px;
                         cursor: pointer;
+                        font-family: &quot;DM Sans&quot;, sans-serif;
+                        font-size: 0.78rem;
                     "
                 >
                     Cancelar
@@ -303,106 +837,64 @@
             </div>
 
             <!-- Modal barbeiros -->
-            <div
-                id="modal-barbeiro"
-                class="hidden"
-                style="
-                    position: fixed;
-                    inset: 0;
-                    background: rgba(0, 0, 0, 0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 100;
-                "
-            >
-                <div
-                    style="
-                        background: #1a1a1a;
-                        border: 1px solid #333;
-                        border-radius: 16px;
-                        padding: 32px;
-                        width: 100%;
-                        max-width: 440px;
-                    "
-                >
-                    <h2 style="color: #c9a84c; margin-bottom: 24px">
-                        Gerenciar Barbeiros
-                    </h2>
+            <div id="modal-barbeiro" class="modal-overlay hidden">
+                <div class="modal-box">
+                    <div class="modal-title">Gerenciar Barbeiros</div>
                     <div
                         id="lista-barbeiros-modal"
-                        style="margin-bottom: 24px"
+                        style="margin-bottom: 20px"
                     ></div>
-                    <hr style="border-color: #333; margin-bottom: 24px" />
-                    <h3
+                    <hr
+                        style="border-color: var(--border); margin-bottom: 20px"
+                    />
+                    <div
                         style="
-                            color: #aaa;
-                            margin-bottom: 16px;
-                            font-size: 0.95rem;
+                            font-size: 0.72rem;
+                            color: var(--text-muted);
+                            letter-spacing: 0.2em;
+                            text-transform: uppercase;
+                            margin-bottom: 14px;
                         "
                     >
                         Novo Barbeiro
-                    </h3>
+                    </div>
                     <div class="campo">
-                        <label>Nome</label>
-                        <input
+                        <label>Nome</label
+                        ><input
                             type="text"
                             id="novo-nome"
                             placeholder="Nome completo"
                         />
                     </div>
                     <div class="campo">
-                        <label>Email</label>
-                        <input
+                        <label>Email</label
+                        ><input
                             type="email"
                             id="novo-email"
                             placeholder="email@barbearia.com"
                         />
                     </div>
                     <div class="campo">
-                        <label>Senha</label>
-                        <input
+                        <label>Senha</label
+                        ><input
                             type="password"
                             id="novo-senha"
                             placeholder="••••••"
                         />
                     </div>
-                    <div
-                        id="erro-barbeiro"
-                        style="
-                            color: #d55b5b;
-                            font-size: 0.9rem;
-                            margin-bottom: 12px;
-                            display: none;
-                        "
-                    ></div>
-                    <div style="display: flex; gap: 12px">
+                    <div id="erro-barbeiro" class="erro-msg"></div>
+                    <div style="display: flex; gap: 10px; margin-top: 4px">
                         <button
                             onclick="fecharModal()"
-                            style="
-                                flex: 1;
-                                padding: 12px;
-                                background: transparent;
-                                border: 1px solid #555;
-                                color: #aaa;
-                                border-radius: 8px;
-                                cursor: pointer;
-                            "
+                            class="btn-outline-gold"
+                            style="flex: 1"
                         >
                             Cancelar
                         </button>
                         <button
                             onclick="salvarBarbeiro()"
-                            style="
-                                flex: 1;
-                                padding: 12px;
-                                background: #c9a84c;
-                                border: none;
-                                color: #000;
-                                font-weight: bold;
-                                border-radius: 8px;
-                                cursor: pointer;
-                            "
+                            class="btn-primary"
+                            style="margin-top: 0; flex: 1"
                         >
                             Cadastrar
                         </button>
@@ -410,74 +902,41 @@
                 </div>
             </div>
 
-            <!-- Nome do barbeiro -->
-            <div class="filtros">
-                <div class="campo" style="flex: 1">
-                    <label>Barbeiro</label>
-                    <input
-                        type="text"
-                        id="nome-barbeiro"
-                        disabled
-                        style="
-                            background: #111;
-                            color: #c9a84c;
-                            font-weight: bold;
-                        "
-                    />
-                </div>
+            <!-- Nome barbeiro -->
+            <div class="campo" style="margin-bottom: 20px">
+                <label>Barbeiro</label>
+                <input
+                    type="text"
+                    id="nome-barbeiro"
+                    disabled
+                    style="
+                        color: var(--gold);
+                        font-weight: 600;
+                        background: var(--dark);
+                    "
+                />
             </div>
 
             <!-- Abas -->
-            <div
-                style="
-                    display: flex;
-                    gap: 0;
-                    margin-bottom: 24px;
-                    border-bottom: 1px solid #333;
-                "
-            >
+            <div class="abas-wrapper">
                 <button
                     id="aba-dia"
+                    class="aba-btn ativa"
                     onclick="trocarAba('dia')"
-                    style="
-                        padding: 10px 20px;
-                        background: transparent;
-                        border: none;
-                        border-bottom: 2px solid #c9a84c;
-                        color: #c9a84c;
-                        cursor: pointer;
-                        font-size: 0.95rem;
-                    "
                 >
                     📅 Por dia
                 </button>
                 <button
                     id="aba-periodo"
+                    class="aba-btn"
                     onclick="trocarAba('periodo')"
-                    style="
-                        padding: 10px 20px;
-                        background: transparent;
-                        border: none;
-                        border-bottom: 2px solid transparent;
-                        color: #aaa;
-                        cursor: pointer;
-                        font-size: 0.95rem;
-                    "
                 >
                     📊 Por período
                 </button>
                 <button
                     id="aba-horarios"
+                    class="aba-btn"
                     onclick="trocarAba('horarios')"
-                    style="
-                        padding: 10px 20px;
-                        background: transparent;
-                        border: none;
-                        border-bottom: 2px solid transparent;
-                        color: #aaa;
-                        cursor: pointer;
-                        font-size: 0.95rem;
-                    "
                 >
                     ⚙️ Horários
                 </button>
@@ -487,89 +946,42 @@
             <div id="filtro-dia">
                 <div class="campo">
                     <label>Data</label>
-                    <div class="calendario-wrapper">
-                        <div
-                            id="data-trigger"
-                            onclick="toggleCalendarioPainel()"
-                            style="
-                                padding: 12px 16px;
-                                background: #1a1a1a;
-                                border: 1px solid #333;
-                                border-radius: 8px;
-                                cursor: pointer;
-                                color: #f0f0f0;
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                            "
+                    <div
+                        id="data-trigger"
+                        class="data-trigger"
+                        onclick="toggleCalendarioPainel()"
+                    >
+                        <span id="data-selecionada-texto"
+                            >Selecione uma data</span
                         >
-                            <span id="data-selecionada-texto"
-                                >Selecione uma data</span
-                            >
-                            <span>📅</span>
+                        <span style="color: var(--gold)">◈</span>
+                    </div>
+                    <div id="calendario-painel" class="calendario-popup">
+                        <div class="cal-nav">
+                            <button onclick="mudarMes(-1)">‹</button>
+                            <span id="mes-ano" class="cal-mes"></span>
+                            <button onclick="mudarMes(1)">›</button>
                         </div>
-                        <div id="calendario-painel" class="calendario-popup">
-                            <div
-                                style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    margin-bottom: 16px;
-                                "
-                            >
-                                <button
-                                    onclick="mudarMes(-1)"
-                                    style="
-                                        background: transparent;
-                                        border: none;
-                                        color: #c9a84c;
-                                        font-size: 1.2rem;
-                                        cursor: pointer;
-                                        padding: 4px 8px;
-                                    "
-                                >
-                                    ‹
-                                </button>
-                                <span
-                                    id="mes-ano"
-                                    style="font-weight: bold; color: #f0f0f0"
-                                ></span>
-                                <button
-                                    onclick="mudarMes(1)"
-                                    style="
-                                        background: transparent;
-                                        border: none;
-                                        color: #c9a84c;
-                                        font-size: 1.2rem;
-                                        cursor: pointer;
-                                        padding: 4px 8px;
-                                    "
-                                >
-                                    ›
-                                </button>
-                            </div>
-                            <div
-                                id="cabecalho-semana"
-                                style="
-                                    display: grid;
-                                    grid-template-columns: repeat(7, 1fr);
-                                    gap: 4px;
-                                    margin-bottom: 8px;
-                                "
-                            ></div>
-                            <div
-                                id="dias-calendario"
-                                style="
-                                    display: grid;
-                                    grid-template-columns: repeat(7, 1fr);
-                                    gap: 4px;
-                                "
-                            ></div>
-                        </div>
+                        <div
+                            id="cabecalho-semana"
+                            style="
+                                display: grid;
+                                grid-template-columns: repeat(7, 1fr);
+                                gap: 3px;
+                                margin-bottom: 4px;
+                            "
+                        ></div>
+                        <div
+                            id="dias-calendario"
+                            style="
+                                display: grid;
+                                grid-template-columns: repeat(7, 1fr);
+                                gap: 3px;
+                            "
+                        ></div>
                     </div>
                 </div>
 
-                <!-- Resumo do dia -->
                 <div class="resumo" id="resumo-dia">
                     <div class="card-resumo">
                         <div class="numero" id="total-dia">0</div>
@@ -580,77 +992,46 @@
                         <div class="legenda">Concluídos</div>
                     </div>
                     <div class="card-resumo">
-                        <div class="numero" id="total-receita">R$0</div>
-                        <div class="legenda">Receita do dia</div>
+                        <div
+                            class="numero"
+                            id="total-receita"
+                            style="font-size: 1.3rem"
+                        >
+                            R$0
+                        </div>
+                        <div class="legenda">Receita</div>
                     </div>
                 </div>
 
-                <!-- Lista do dia -->
-                <div class="lista-agendamentos" id="lista"></div>
+                <div id="lista"></div>
             </div>
 
             <!-- ═══ ABA PERÍODO ═══ -->
             <div id="filtro-periodo" style="display: none">
-                <div style="display: flex; gap: 12px; flex-wrap: wrap">
-                    <div class="campo" style="flex: 1; min-width: 140px">
+                <div class="periodo-grid">
+                    <div class="campo">
                         <label>Data início</label>
                         <div class="calendario-wrapper">
                             <div
                                 onclick="toggleCalendario('inicio')"
-                                style="
-                                    padding: 12px 16px;
-                                    background: #1a1a1a;
-                                    border: 1px solid #333;
-                                    border-radius: 8px;
-                                    cursor: pointer;
-                                    color: #f0f0f0;
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                "
+                                class="data-trigger"
                             >
                                 <span id="texto-inicio">Selecione</span>
-                                <span>📅</span>
+                                <span style="color: var(--gold)">◈</span>
                             </div>
                             <div id="cal-inicio" class="calendario-popup">
-                                <div
-                                    style="
-                                        display: flex;
-                                        justify-content: space-between;
-                                        align-items: center;
-                                        margin-bottom: 16px;
-                                    "
-                                >
+                                <div class="cal-nav">
                                     <button
                                         onclick="mudarMesPeriodo('inicio', -1)"
-                                        style="
-                                            background: transparent;
-                                            border: none;
-                                            color: #c9a84c;
-                                            font-size: 1.2rem;
-                                            cursor: pointer;
-                                            padding: 4px 8px;
-                                        "
                                     >
                                         ‹
                                     </button>
                                     <span
                                         id="mes-ano-inicio"
-                                        style="
-                                            font-weight: bold;
-                                            color: #f0f0f0;
-                                        "
+                                        class="cal-mes"
                                     ></span>
                                     <button
                                         onclick="mudarMesPeriodo('inicio', 1)"
-                                        style="
-                                            background: transparent;
-                                            border: none;
-                                            color: #c9a84c;
-                                            font-size: 1.2rem;
-                                            cursor: pointer;
-                                            padding: 4px 8px;
-                                        "
                                     >
                                         ›
                                     </button>
@@ -660,8 +1041,8 @@
                                     style="
                                         display: grid;
                                         grid-template-columns: repeat(7, 1fr);
-                                        gap: 4px;
-                                        margin-bottom: 8px;
+                                        gap: 3px;
+                                        margin-bottom: 4px;
                                     "
                                 ></div>
                                 <div
@@ -669,73 +1050,34 @@
                                     style="
                                         display: grid;
                                         grid-template-columns: repeat(7, 1fr);
-                                        gap: 4px;
+                                        gap: 3px;
                                     "
                                 ></div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="campo" style="flex: 1; min-width: 140px">
+                    <div class="campo">
                         <label>Data fim</label>
                         <div class="calendario-wrapper">
                             <div
                                 onclick="toggleCalendario('fim')"
-                                style="
-                                    padding: 12px 16px;
-                                    background: #1a1a1a;
-                                    border: 1px solid #333;
-                                    border-radius: 8px;
-                                    cursor: pointer;
-                                    color: #f0f0f0;
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                "
+                                class="data-trigger"
                             >
                                 <span id="texto-fim">Selecione</span>
-                                <span>📅</span>
+                                <span style="color: var(--gold)">◈</span>
                             </div>
                             <div id="cal-fim" class="calendario-popup">
-                                <div
-                                    style="
-                                        display: flex;
-                                        justify-content: space-between;
-                                        align-items: center;
-                                        margin-bottom: 16px;
-                                    "
-                                >
+                                <div class="cal-nav">
                                     <button
                                         onclick="mudarMesPeriodo('fim', -1)"
-                                        style="
-                                            background: transparent;
-                                            border: none;
-                                            color: #c9a84c;
-                                            font-size: 1.2rem;
-                                            cursor: pointer;
-                                            padding: 4px 8px;
-                                        "
                                     >
                                         ‹
                                     </button>
                                     <span
                                         id="mes-ano-fim"
-                                        style="
-                                            font-weight: bold;
-                                            color: #f0f0f0;
-                                        "
+                                        class="cal-mes"
                                     ></span>
-                                    <button
-                                        onclick="mudarMesPeriodo('fim', 1)"
-                                        style="
-                                            background: transparent;
-                                            border: none;
-                                            color: #c9a84c;
-                                            font-size: 1.2rem;
-                                            cursor: pointer;
-                                            padding: 4px 8px;
-                                        "
-                                    >
+                                    <button onclick="mudarMesPeriodo('fim', 1)">
                                         ›
                                     </button>
                                 </div>
@@ -744,8 +1086,8 @@
                                     style="
                                         display: grid;
                                         grid-template-columns: repeat(7, 1fr);
-                                        gap: 4px;
-                                        margin-bottom: 8px;
+                                        gap: 3px;
+                                        margin-bottom: 4px;
                                     "
                                 ></div>
                                 <div
@@ -753,7 +1095,7 @@
                                     style="
                                         display: grid;
                                         grid-template-columns: repeat(7, 1fr);
-                                        gap: 4px;
+                                        gap: 3px;
                                     "
                                 ></div>
                             </div>
@@ -761,24 +1103,10 @@
                     </div>
                 </div>
 
-                <button
-                    onclick="buscarPeriodo()"
-                    style="
-                        width: 100%;
-                        padding: 12px;
-                        margin-top: 8px;
-                        background: #c9a84c;
-                        border: none;
-                        border-radius: 8px;
-                        color: #000;
-                        font-weight: bold;
-                        cursor: pointer;
-                    "
-                >
+                <button onclick="buscarPeriodo()" class="btn-primary">
                     Buscar período
                 </button>
 
-                <!-- Resumo do período -->
                 <div
                     id="resumo-periodo"
                     style="display: none; margin-top: 20px"
@@ -786,7 +1114,7 @@
                     <div class="resumo">
                         <div class="card-resumo">
                             <div class="numero" id="p-total">0</div>
-                            <div class="legenda">Agendamentos</div>
+                            <div class="legenda">Total</div>
                         </div>
                         <div class="card-resumo">
                             <div class="numero" id="p-concluidos">0</div>
@@ -796,103 +1124,76 @@
                             <div
                                 class="numero"
                                 id="p-receita"
-                                style="font-size: 1.4rem"
+                                style="font-size: 1.2rem"
                             >
                                 R$0
                             </div>
-                            <div class="legenda">Receita total</div>
+                            <div class="legenda">Receita</div>
                         </div>
                     </div>
-                    <div class="lista-agendamentos" id="lista-periodo"></div>
+                    <div id="lista-periodo"></div>
                 </div>
             </div>
+
             <!-- ═══ ABA HORÁRIOS ═══ -->
             <div id="filtro-horarios" style="display: none">
-                <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px">
-                    Defina os dias e horários em que você trabalha. Os clientes
-                    só poderão agendar nos dias ativos.
-                </p>
-
-                <div id="lista-horarios"></div>
-
-                <!-- Folgas pontuais -->
-                <div style="margin-top: 32px">
-                    <h3
-                        style="
-                            color: #c9a84c;
-                            font-size: 1rem;
-                            margin-bottom: 8px;
-                        "
-                    >
-                        📅 Folgas pontuais
-                    </h3>
+                <div class="form-card" style="margin-bottom: 20px">
+                    <div class="section-label">Dias de trabalho</div>
                     <p
                         style="
-                            color: #aaa;
-                            font-size: 0.85rem;
+                            color: var(--text-muted);
+                            font-size: 0.82rem;
                             margin-bottom: 16px;
                         "
                     >
-                        Bloqueie um dia específico mesmo que seja dia de
+                        Ative os dias em que você trabalha e defina o horário.
+                    </p>
+                    <div id="lista-horarios"></div>
+                    <button onclick="salvarHorarios()" class="btn-primary">
+                        💾 Salvar horários
+                    </button>
+                </div>
+
+                <div class="form-card">
+                    <div class="section-label">Folgas pontuais</div>
+                    <p
+                        style="
+                            color: var(--text-muted);
+                            font-size: 0.82rem;
+                            margin-bottom: 16px;
+                        "
+                    >
+                        Bloqueie uma data específica mesmo que seja dia de
                         trabalho.
                     </p>
-
-                    <div style="display: flex; gap: 8px; margin-bottom: 16px">
-                        <input
-                            type="date"
-                            id="input-folga"
-                            style="
-                                flex: 1;
-                                padding: 10px 14px;
-                                background: #1a1a1a;
-                                border: 1px solid #333;
-                                border-radius: 8px;
-                                color: #f0f0f0;
-                                font-size: 0.95rem;
-                                outline: none;
-                            "
-                        />
+                    <div style="display: flex; gap: 8px; margin-bottom: 14px">
+                        <input type="date" id="input-folga" style="flex: 1" />
                         <button
                             onclick="adicionarBloqueio()"
-                            style="
-                                padding: 10px 20px;
-                                background: #c9a84c;
-                                border: none;
-                                border-radius: 8px;
-                                color: #000;
-                                font-weight: bold;
-                                cursor: pointer;
-                                white-space: nowrap;
-                            "
+                            class="btn-outline-gold"
+                            style="white-space: nowrap"
                         >
                             + Adicionar
                         </button>
                     </div>
-
                     <div id="lista-bloqueios"></div>
                 </div>
+            </div>
 
-                <button
-                    onclick="salvarHorarios()"
-                    style="
-                        width: 100%;
-                        padding: 14px;
-                        margin-top: 8px;
-                        background: #c9a84c;
-                        border: none;
-                        border-radius: 8px;
-                        color: #000;
-                        font-weight: bold;
-                        font-size: 1rem;
-                        cursor: pointer;
-                    "
+            <div style="margin-top: 28px; text-align: center">
+                <a href="index.html" class="nav-link"
+                    >← Página de agendamento</a
                 >
-                    💾 Salvar horários
-                </button>
             </div>
         </main>
 
-        <script src="painel.js"></script>
+        <footer>
+            <span style="color: #333">✦</span>
+            &nbsp; Barbershop &copy; 2026 &nbsp;
+            <span style="color: #333">✦</span>
+        </footer>
+
         <script src="/socket.io/socket.io.js"></script>
+        <script src="painel.js"></script>
     </body>
 </html>

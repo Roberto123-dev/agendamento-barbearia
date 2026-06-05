@@ -19,6 +19,7 @@
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^25.9.1",
         "@types/pg": "^8.20.0",
+        "@types/web-push": "^3.6.4",
         "bcrypt": "^6.0.0",
         "cors": "^2.8.6",
         "dotenv": "^17.4.2",
@@ -31,7 +32,6 @@
         "web-push": "^3.6.7"
     },
     "devDependencies": {
-        "@types/web-push": "^3.6.4",
         "nodemon": "^3.1.14"
     }
 }

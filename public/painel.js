@@ -218,6 +218,8 @@ async function init() {
     await carregarDiasComAgendamento();
     renderCalendario();
     carregarAgendamentos();
+    iniciarSocket();
+    iniciarPushNotifications();
 }
 
 async function carregarAgendamentos() {
@@ -922,6 +924,167 @@ async function removerBloqueio(id) {
         const dados = await res.json();
         alert(dados.erro || "Erro ao remover folga");
     }
+}
+
+// ─── TEMPO REAL (SOCKET.IO) ───────────────────────────
+
+function iniciarSocket() {
+    const socket = io();
+
+    socket.on("connect", () => {
+        console.log("🟢 Socket conectado:", socket.id);
+    });
+
+    socket.on("novo-agendamento", (dados) => {
+        // Ignora se não é para este barbeiro
+        if (dados.barbeiro_id !== barbeiro.id) return;
+
+        // 1. Som de alerta
+        tocarAlerta();
+
+        // 2. Notificação do sistema
+        notificar(dados);
+
+        // 3. Recarrega a lista se o dia exibido for o mesmo do agendamento
+        const dataExibida = getDataFormatada();
+        if (dados.data === dataExibida && abaAtiva === "dia") {
+            carregarAgendamentos();
+            carregarDiasComAgendamento().then(() => renderCalendario());
+        }
+
+        // 4. Toast visual no painel
+        mostrarToast(dados);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("🔴 Socket desconectado");
+    });
+}
+
+function tocarAlerta() {
+    try {
+        // Beep sintético via Web Audio API — não precisa de arquivo mp3
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+        console.warn("Áudio não disponível:", e);
+    }
+}
+
+async function notificar(dados) {
+    const titulo = `Novo agendamento! ✂️`;
+    const corpo = `${dados.cliente_nome} — ${dados.servico} às ${dados.hora_inicio}`;
+
+    if (Notification.permission === "granted") {
+        new Notification(titulo, { body: corpo, icon: "/favicon.ico" });
+    } else if (Notification.permission === "default") {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+            new Notification(titulo, { body: corpo, icon: "/favicon.ico" });
+        }
+    }
+}
+
+function mostrarToast(dados) {
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+        position:fixed;top:24px;right:24px;z-index:999;
+        background:#1a1a1a;border:1px solid #c9a84c;border-radius:12px;
+        padding:16px 20px;max-width:320px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+        animation:slideIn 0.3s ease;
+    `;
+    toast.innerHTML = `
+        <div style="font-weight:bold;color:#c9a84c;margin-bottom:4px;">
+            ✂️ Novo agendamento!
+        </div>
+        <div style="color:#f0f0f0;font-size:0.9rem;">${dados.cliente_nome}</div>
+        <div style="color:#aaa;font-size:0.85rem;">
+            ${dados.servico} · ${dados.hora_inicio} · ${dados.data}
+        </div>
+    `;
+
+    // Animação CSS
+    const style = document.createElement("style");
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(toast);
+
+    // Remove após 5 segundos
+    setTimeout(() => toast.remove(), 5000);
+}
+
+async function iniciarPushNotifications() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        console.warn("Push notifications não suportadas neste navegador");
+        return;
+    }
+
+    try {
+        // Registra o Service Worker
+        const registro = await navigator.serviceWorker.register("/sw.js");
+        console.log("✅ Service Worker registrado");
+
+        // Pede permissão
+        const permissao = await Notification.requestPermission();
+        if (permissao !== "granted") {
+            console.warn("Permissão de notificação negada");
+            return;
+        }
+
+        // Pega a chave pública VAPID do servidor
+        const VAPID_PUBLIC_KEY =
+            "BIFNjk8xKTaih0Zggn1FBSVf0MDK6QbW5ShXLqfWMpIXa3ZL3qvQ8X9L24RnwO_YvYYPIZ9KztMVFVhT-kJCNiE";
+
+        // Converte a chave para Uint8Array
+        const chaveUint8 = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+        // Verifica se já tem subscription ativa
+        let subscription = await registro.pushManager.getSubscription();
+
+        if (!subscription) {
+            // Cria nova subscription
+            subscription = await registro.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: chaveUint8,
+            });
+        }
+
+        // Envia subscription para o backend
+        await fetch(`${API}/push/subscription`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ subscription }),
+        });
+
+        console.log("✅ Push notifications ativadas");
+    } catch (e) {
+        console.error("Erro ao iniciar push notifications:", e);
+    }
+}
+
+// Utilitário para converter chave VAPID
+function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
 init();

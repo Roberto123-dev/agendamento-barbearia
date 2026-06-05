@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import pool from "../database/db";
 import { AuthRequest } from "../middlewares/auth";
+import { io, webpush } from "../server";
 
 function horaParaMinutos(hora: string): number {
     const [h, m] = hora.split(":").map(Number);
@@ -113,8 +114,9 @@ export async function criarAgendamento(req: Request, res: Response) {
         return;
     }
 
+    // 1. Busca duração do serviço
     const { rows: servicos } = await pool.query(
-        "SELECT duracao_minutos FROM servicos WHERE id = $1",
+        "SELECT duracao_minutos, nome, preco FROM servicos WHERE id = $1",
         [servico_id],
     );
     if (servicos.length === 0) {
@@ -126,26 +128,23 @@ export async function criarAgendamento(req: Request, res: Response) {
         horaParaMinutos(hora_inicio) + servicos[0].duracao_minutos,
     );
 
+    // 2. Verifica conflito
     const { rows: conflito } = await pool.query(
-        `
-    SELECT id FROM agendamentos
-    WHERE barbeiro_id = $1 AND data = $2 AND status != 'cancelado'
-    AND hora_inicio < $3 AND hora_fim > $4
-  `,
+        `SELECT id FROM agendamentos
+         WHERE barbeiro_id = $1 AND data = $2 AND status != 'cancelado'
+         AND hora_inicio < $3 AND hora_fim > $4`,
         [barbeiro_id, data, horaFim, hora_inicio],
     );
-
     if (conflito.length > 0) {
         res.status(409).json({ erro: "Horário não está mais disponível" });
         return;
     }
 
+    // 3. Insere o agendamento
     const { rows } = await pool.query(
-        `
-    INSERT INTO agendamentos
-    (barbeiro_id, servico_id, cliente_nome, cliente_telefone, data, hora_inicio, hora_fim)
-    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-  `,
+        `INSERT INTO agendamentos
+         (barbeiro_id, servico_id, cliente_nome, cliente_telefone, data, hora_inicio, hora_fim)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [
             barbeiro_id,
             servico_id,
@@ -157,6 +156,59 @@ export async function criarAgendamento(req: Request, res: Response) {
         ],
     );
 
+    // 4. Busca nome do barbeiro
+    const { rows: barbeiroInfo } = await pool.query(
+        "SELECT nome FROM barbeiros WHERE id = $1",
+        [barbeiro_id],
+    );
+
+    // 5. Dispara Socket.io
+    io.emit("novo-agendamento", {
+        barbeiro_id: Number(barbeiro_id),
+        agendamento_id: rows[0].id,
+        cliente_nome,
+        cliente_telefone,
+        servico: servicos[0].nome,
+        preco: servicos[0].preco,
+        data,
+        hora_inicio,
+        hora_fim: horaFim,
+        barbeiro_nome: barbeiroInfo[0].nome,
+    });
+
+    // Após io.emit, dentro de criarAgendamento:
+    try {
+        const { rows: subs } = await pool.query(
+            "SELECT subscription FROM push_subscriptions WHERE barbeiro_id = $1",
+            [barbeiro_id],
+        );
+
+        const payload = JSON.stringify({
+            title: "Novo agendamento! ✂️",
+            body: `${cliente_nome} — ${servicos[0].nome} às ${hora_inicio}`,
+            data: { url: "/painel.html" },
+        });
+
+        await Promise.all(
+            subs.map((s) =>
+                webpush
+                    .sendNotification(JSON.parse(s.subscription), payload)
+                    .catch((err) => {
+                        // Remove subscription inválida (expirada)
+                        if (err.statusCode === 410) {
+                            pool.query(
+                                "DELETE FROM push_subscriptions WHERE subscription = $1",
+                                [s.subscription],
+                            );
+                        }
+                    }),
+            ),
+        );
+    } catch (e) {
+        console.error("Erro ao enviar push:", e);
+    }
+
+    // 6. Responde ao cliente
     res.status(201).json({
         id: rows[0].id,
         mensagem: "Agendamento criado com sucesso",

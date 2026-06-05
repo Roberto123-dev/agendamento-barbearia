@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import barbeirosRouter from "./routes/barbeiros";
 import servicosRouter from "./routes/servicos";
 import agendamentosRouter from "./routes/agendamentos";
@@ -10,6 +12,8 @@ import authRouter from "./routes/auth";
 import pool from "./database/db";
 import bcrypt from "bcrypt";
 import bloqueiosRouter from "./routes/bloqueios";
+import pushRouter from "./routes/push";
+import webpush from "web-push";
 
 dotenv.config();
 
@@ -57,6 +61,13 @@ async function initDB() {
       hora_fim TEXT NOT NULL,
       motivo TEXT
     );
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id) ON DELETE CASCADE,
+    endpoint TEXT UNIQUE NOT NULL,
+    subscription TEXT NOT NULL,
+    criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+);
   `);
     console.log("✅ Tabelas verificadas/criadas");
 }
@@ -105,6 +116,10 @@ async function seedSeVazio() {
 }
 
 const app = express();
+const httpServer = createServer(app);
+export const io = new Server(httpServer, {
+    cors: { origin: "*" },
+});
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -116,15 +131,23 @@ app.use("/barbeiros", barbeirosRouter);
 app.use("/servicos", servicosRouter);
 app.use("/agendamentos", agendamentosRouter);
 app.use("/bloqueios", bloqueiosRouter);
+app.use("/push", pushRouter);
 
 app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, async () => {
+webpush.setVapidDetails(
+    process.env.VAPID_EMAIL!,
+    process.env.VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+);
+
+httpServer.listen(PORT, async () => {
     console.log(`Servidor rodando na porta ${PORT}`);
     await initDB();
     await seedSeVazio();
 });
 
 export default app;
+export { webpush };

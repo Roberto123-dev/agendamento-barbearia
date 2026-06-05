@@ -7,6 +7,9 @@ services:
             - NODE_ENV=development
             - DATABASE_URL=postgresql://postgres:postgres@db:5432/barbearia
             - JWT_SECRET=barbearia_secret_2026
+            - VAPID_PUBLIC_KEY=BIFNjk8xKTaih0Zggn1FBSVf0MDK6QbW5ShXLqfWMpIXa3ZL3qvQ8X9L24RnwO_YvYYPIZ9KztMVFVhT-kJCNiE
+            - VAPID_PRIVATE_KEY=9YbPIEK5rMzxe3MVkqjFWqZG1ySL5PtsH3GX41airuA
+            - VAPID_EMAIL=mailto:robertoinovacasa@gmail.com
         depends_on:
             db:
                 condition: service_healthy

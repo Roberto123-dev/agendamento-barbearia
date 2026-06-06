@@ -20,6 +20,13 @@ async function carregarTema() {
 
         const b = await res.json();
 
+        // Atualiza logo — precisa pegar pelo ID correto
+        const logoImg = document.getElementById("logo-img");
+        if (logoImg && b.logo_url) {
+            logoImg.src = b.logo_url;
+            logoImg.style.display = "block"; // 👈 mostra só quando tem URL
+        }
+
         // Atualiza título e header
         document.title = `Login — ${b.nome_fantasia}`;
         const h1 = document.querySelector("header h1");

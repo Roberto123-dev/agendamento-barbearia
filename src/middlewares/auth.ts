@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
-    barbeiro?: { id: number; nome: string; email: string };
+    barbeiro?: {
+        id: number;
+        nome: string;
+        email: string;
+        barbearia_id?: number;
+    };
 }
 
 export function autenticar(

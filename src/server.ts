@@ -62,12 +62,25 @@ async function initDB() {
       motivo TEXT
     );
     CREATE TABLE IF NOT EXISTS push_subscriptions (
-    id SERIAL PRIMARY KEY,
-    barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id) ON DELETE CASCADE,
-    endpoint TEXT UNIQUE NOT NULL,
-    subscription TEXT NOT NULL,
-    criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
-);
+      id SERIAL PRIMARY KEY,
+      barbeiro_id INTEGER NOT NULL REFERENCES barbeiros(id) ON DELETE CASCADE,
+      endpoint TEXT UNIQUE NOT NULL,
+      subscription TEXT NOT NULL,
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
+    CREATE TABLE IF NOT EXISTS barbearias (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      nome_fantasia TEXT NOT NULL,
+      logo_url TEXT DEFAULT '/assets/images/5.png',
+      cor_primaria TEXT DEFAULT '#c9a84c',
+      cor_secundaria TEXT DEFAULT '#1a1a1a',
+      cor_fundo TEXT DEFAULT '#0a0a0a',
+      fonte_titulo TEXT DEFAULT 'Bebas Neue',
+      whatsapp TEXT,
+      ativo BOOLEAN DEFAULT true,
+      criado_em TEXT NOT NULL DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+    );
   `);
     console.log("✅ Tabelas verificadas/criadas");
 }
@@ -80,6 +93,18 @@ async function seedSeVazio() {
     if (parseInt(rows[0].total) === 0) {
         console.log("🌱 Banco vazio — rodando seed...");
         const senhaHash = await bcrypt.hash("123456", 10);
+
+        await pool.query(
+            `INSERT INTO barbearias (slug, nome_fantasia, logo_url, whatsapp)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (slug) DO NOTHING`,
+            [
+                "demo",
+                "Barbershop Premium",
+                "/barbearias/demo/logo.png",
+                "5521999999999",
+            ],
+        );
 
         const r1 = await pool.query(
             "INSERT INTO barbeiros (nome, email, senha) VALUES ($1, $2, $3) RETURNING id",
@@ -124,7 +149,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "../public")));
+
+// ── ROTAS DE API ─────────────────────────────────────
+// Todas as rotas de API ANTES do express.static e das rotas de página
 
 app.use("/auth", authRouter);
 app.use("/barbeiros", barbeirosRouter);
@@ -137,6 +164,75 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Rota da API para buscar tema da barbearia
+app.get("/api/barbearia/:slug", async (req, res) => {
+    const { slug } = req.params;
+
+    const { rows } = await pool.query(
+        "SELECT * FROM barbearias WHERE slug = $1 AND ativo = true",
+        [slug],
+    );
+
+    if (rows.length === 0) {
+        res.status(404).json({ erro: "Barbearia não encontrada" });
+        return;
+    }
+
+    res.json(rows[0]);
+});
+
+// ── ARQUIVOS ESTÁTICOS ───────────────────────────────
+// express.static ANTES das rotas de página
+// Isso permite que /app.js, /style.css, /assets/ etc sejam servidos normalmente
+app.use(express.static(path.join(__dirname, "../public")));
+
+// ── ROTAS DE PÁGINA POR SLUG ─────────────────────────
+// DEPOIS do static — só pega rotas que não são arquivos estáticos
+
+const slugsReservados = [
+    "auth",
+    "barbeiros",
+    "servicos",
+    "agendamentos",
+    "bloqueios",
+    "push",
+    "health",
+    "api",
+    "socket.io",
+    "favicon.ico",
+];
+
+app.get("/:slug", (req, res) => {
+    const { slug } = req.params;
+
+    // Ignora slugs reservados e arquivos com extensão (.html, .js, .css, .png etc)
+    if (slugsReservados.includes(slug) || slug.includes(".")) {
+        res.status(404).send("Not found");
+        return;
+    }
+
+    res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+app.get("/:slug/painel", (req, res) => {
+    const { slug } = req.params;
+    if (slug.includes(".")) {
+        res.status(404).send("Not found");
+        return;
+    }
+    res.sendFile(path.join(__dirname, "../public/painel.html"));
+});
+
+app.get("/:slug/login", (req, res) => {
+    const { slug } = req.params;
+    if (slug.includes(".")) {
+        res.status(404).send("Not found");
+        return;
+    }
+    res.sendFile(path.join(__dirname, "../public/login.html"));
+});
+
+// ── VAPID ────────────────────────────────────────────
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL!,
     process.env.VAPID_PUBLIC_KEY!,

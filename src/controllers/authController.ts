@@ -1,3 +1,4 @@
+// AUTHCONTROLLER.TS
 import { Request, Response } from "express";
 import pool from "../database/db";
 import bcrypt from "bcrypt";
@@ -12,10 +13,9 @@ export async function login(req: Request, res: Response) {
     }
 
     const { rows } = await pool.query(
-        `
-    SELECT id, nome, email, senha FROM barbeiros
-    WHERE email = $1 AND ativo = 1
-  `,
+        `SELECT id, nome, email, senha, barbearia_id
+         FROM barbeiros
+         WHERE email = $1 AND ativo = 1`,
         [email],
     );
 
@@ -33,7 +33,12 @@ export async function login(req: Request, res: Response) {
     }
 
     const token = jwt.sign(
-        { id: barbeiro.id, nome: barbeiro.nome, email: barbeiro.email },
+        {
+            id: barbeiro.id,
+            nome: barbeiro.nome,
+            email: barbeiro.email,
+            barbearia_id: barbeiro.barbearia_id, // 👈 incluído no token
+        },
         process.env.JWT_SECRET!,
         { expiresIn: "8h" },
     );
@@ -44,6 +49,7 @@ export async function login(req: Request, res: Response) {
             id: barbeiro.id,
             nome: barbeiro.nome,
             email: barbeiro.email,
+            barbearia_id: barbeiro.barbearia_id, // 👈 retornado ao frontend
         },
     });
 }
@@ -57,9 +63,7 @@ export async function trocarSenha(req: Request, res: Response) {
     }
 
     const { rows } = await pool.query(
-        `
-    SELECT id, senha FROM barbeiros WHERE email = $1 AND ativo = 1
-  `,
+        `SELECT id, senha FROM barbeiros WHERE email = $1 AND ativo = 1`,
         [email],
     );
 

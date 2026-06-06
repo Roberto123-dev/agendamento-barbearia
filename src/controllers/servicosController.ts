@@ -1,21 +1,33 @@
+// SERVICOSCONTROLLER.TS
 import { Request, Response } from "express";
 import pool from "../database/db";
 
 export async function listarServicos(req: Request, res: Response) {
-    const { rows } = await pool.query(`
-    SELECT id, nome, duracao_minutos, preco
-    FROM servicos WHERE ativo = 1 ORDER BY preco
-  `);
+    const slug = (req.query.slug || req.headers["x-barbearia-slug"]) as string;
+
+    // Se veio slug, filtra por barbearia — senão retorna todos
+    const { rows } = slug
+        ? await pool.query(
+              `SELECT s.id, s.nome, s.duracao_minutos, s.preco
+               FROM servicos s
+               JOIN barbearias b ON b.id = s.barbearia_id
+               WHERE s.ativo = 1 AND b.slug = $1
+               ORDER BY s.preco`,
+              [slug],
+          )
+        : await pool.query(
+              `SELECT id, nome, duracao_minutos, preco
+               FROM servicos WHERE ativo = 1 ORDER BY preco`,
+          );
+
     res.json(rows);
 }
 
 export async function buscarServico(req: Request, res: Response) {
     const { id } = req.params;
     const { rows } = await pool.query(
-        `
-    SELECT id, nome, duracao_minutos, preco
-    FROM servicos WHERE id = $1 AND ativo = 1
-  `,
+        `SELECT id, nome, duracao_minutos, preco
+         FROM servicos WHERE id = $1 AND ativo = 1`,
         [id],
     );
 

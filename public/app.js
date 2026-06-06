@@ -12,6 +12,48 @@ let datasBloqueadas = new Set(); // datas específicas bloqueadas ex: "2026-06-2
 
 // ─── CALENDÁRIO CLIENTE ───────────────────────────────
 
+// ─── TEMA POR SLUG ────────────────────────────────────
+const slug = window.location.pathname.split("/")[1] || "demo";
+
+async function carregarTema() {
+    try {
+        const res = await fetch(`/api/barbearia/${slug}`);
+        if (!res.ok) {
+            window.location.href = "/404.html";
+            return;
+        }
+
+        const b = await res.json();
+
+        // Logo e nome
+        const logoImg = document.querySelector(".logo-wrap img");
+        const headerTitle = document.querySelector(".header-title");
+        const headerSubtitle = document.querySelector(".header-subtitle");
+
+        if (logoImg) logoImg.src = b.logo_url;
+        if (headerTitle) headerTitle.textContent = b.nome_fantasia;
+        document.title = b.nome_fantasia;
+
+        // WhatsApp
+        if (b.whatsapp) {
+            const WHATSAPP_MSG = encodeURIComponent(
+                "Olá! Gostaria de agendar um horário.",
+            );
+            const btnWhats = document.getElementById("btn-whatsapp");
+            if (btnWhats)
+                btnWhats.href = `https://wa.me/${b.whatsapp}?text=${WHATSAPP_MSG}`;
+        }
+
+        // Cores via CSS variables
+        const root = document.documentElement;
+        root.style.setProperty("--gold", b.cor_primaria);
+        root.style.setProperty("--dark2", b.cor_secundaria);
+        root.style.setProperty("--black", b.cor_fundo);
+    } catch (e) {
+        console.error("Erro ao carregar tema:", e);
+    }
+}
+
 function toggleCalendarioCliente() {
     const cal = document.getElementById("calendario-cliente");
     cal.style.display = cal.style.display === "block" ? "none" : "block";
@@ -221,9 +263,11 @@ document.addEventListener("click", (e) => {
 // ─── AGENDAMENTO ──────────────────────────────────────
 
 async function init() {
+    await carregarTema();
+
     const [barbeiros, servicos] = await Promise.all([
-        fetch(`${API}/barbeiros`).then((r) => r.json()),
-        fetch(`${API}/servicos`).then((r) => r.json()),
+        fetch(`${API}/barbeiros?slug=${slug}`).then((r) => r.json()),
+        fetch(`${API}/servicos?slug=${slug}`).then((r) => r.json()),
     ]);
 
     const selBarbeiro = document.getElementById("barbeiro");

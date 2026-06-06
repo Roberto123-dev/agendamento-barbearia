@@ -17,6 +17,23 @@ import webpush from "web-push";
 
 dotenv.config();
 
+// ── SLUGS RESERVADOS ─────────────────────────────────
+// Rotas que não devem ser tratadas como slug de barbearia
+const slugsReservados = [
+    "auth",
+    "barbeiros",
+    "servicos",
+    "agendamentos",
+    "bloqueios",
+    "push",
+    "health",
+    "api",
+    "socket.io",
+    "favicon.ico",
+];
+
+// ── CRIAÇÃO DAS TABELAS ──────────────────────────────
+// Roda na inicialização — cria tabelas se não existirem
 async function initDB() {
     await pool.query(`
     CREATE TABLE IF NOT EXISTS barbeiros (
@@ -72,7 +89,7 @@ async function initDB() {
       id SERIAL PRIMARY KEY,
       slug TEXT UNIQUE NOT NULL,
       nome_fantasia TEXT NOT NULL,
-      logo_url TEXT DEFAULT '/assets/images/5.png',
+      logo_url TEXT DEFAULT '/assets/images/logo.png',
       cor_primaria TEXT DEFAULT '#c9a84c',
       cor_secundaria TEXT DEFAULT '#1a1a1a',
       cor_fundo TEXT DEFAULT '#0a0a0a',
@@ -85,6 +102,8 @@ async function initDB() {
     console.log("✅ Tabelas verificadas/criadas");
 }
 
+// ── SEED INICIAL ─────────────────────────────────────
+// Roda apenas se o banco estiver vazio — útil em desenvolvimento
 async function seedSeVazio() {
     const { rows } = await pool.query(
         "SELECT COUNT(*) as total FROM barbeiros",
@@ -94,25 +113,32 @@ async function seedSeVazio() {
         console.log("🌱 Banco vazio — rodando seed...");
         const senhaHash = await bcrypt.hash("123456", 10);
 
-        await pool.query(
+        // Cria barbearia padrão para desenvolvimento
+        const { rows: barbearia } = await pool.query(
             `INSERT INTO barbearias (slug, nome_fantasia, logo_url, whatsapp)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (slug) DO NOTHING`,
+             VALUES ($1, $2, $3, $4) RETURNING id`,
             [
-                "demo",
-                "Barbershop Premium",
-                "/barbearias/demo/logo.png",
+                "dev",
+                "Barbearia Dev",
+                "/assets/images/logo.png",
                 "5521999999999",
             ],
         );
 
+        const barbearia_id = barbearia[0].id;
+
         const r1 = await pool.query(
-            "INSERT INTO barbeiros (nome, email, senha) VALUES ($1, $2, $3) RETURNING id",
-            ["Carlos Silva", "carlos@barbearia.com", senhaHash],
+            "INSERT INTO barbeiros (nome, email, senha, barbearia_id) VALUES ($1, $2, $3, $4) RETURNING id",
+            ["Carlos Silva", "carlos@barbearia.com", senhaHash, barbearia_id],
         );
         const r2 = await pool.query(
-            "INSERT INTO barbeiros (nome, email, senha) VALUES ($1, $2, $3) RETURNING id",
-            ["Roberto Santos", "roberto@barbearia.com", senhaHash],
+            "INSERT INTO barbeiros (nome, email, senha, barbearia_id) VALUES ($1, $2, $3, $4) RETURNING id",
+            [
+                "Roberto Santos",
+                "roberto@barbearia.com",
+                senhaHash,
+                barbearia_id,
+            ],
         );
 
         for (const servico of [
@@ -122,8 +148,8 @@ async function seedSeVazio() {
             ["Sobrancelha", 15, 15.0],
         ]) {
             await pool.query(
-                "INSERT INTO servicos (nome, duracao_minutos, preco) VALUES ($1, $2, $3)",
-                servico,
+                "INSERT INTO servicos (nome, duracao_minutos, preco, barbearia_id) VALUES ($1, $2, $3, $4)",
+                [...servico, barbearia_id],
             );
         }
 
@@ -136,35 +162,53 @@ async function seedSeVazio() {
             }
         }
 
-        console.log("✅ Seed concluído!");
+        console.log("✅ Seed concluído! Acesse: /dev");
     }
 }
 
+// ── CONFIGURAÇÃO DO SERVIDOR ─────────────────────────
 const app = express();
 const httpServer = createServer(app);
+
+// Socket.io — comunicação em tempo real com o painel do barbeiro
 export const io = new Server(httpServer, {
     cors: { origin: "*" },
 });
+
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
 // ── ROTAS DE API ─────────────────────────────────────
-// Todas as rotas de API ANTES do express.static e das rotas de página
+// Todas ANTES do express.static e das rotas de página
+// para evitar que o Express trate rotas de API como slugs
 
+// Autenticação — login do barbeiro
 app.use("/auth", authRouter);
+
+// CRUD de barbeiros, horários e busca de horários disponíveis
 app.use("/barbeiros", barbeirosRouter);
+
+// CRUD de serviços
 app.use("/servicos", servicosRouter);
+
+// Agendamentos — slots, criar, listar, concluir, cancelar, deletar, período
 app.use("/agendamentos", agendamentosRouter);
+
+// Bloqueios — folgas pontuais do barbeiro
 app.use("/bloqueios", bloqueiosRouter);
+
+// Push notifications — salvar/deletar subscription do navegador
 app.use("/push", pushRouter);
 
+// Health check — verifica se o servidor está rodando
 app.get("/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Rota da API para buscar tema da barbearia
+// API pública — retorna tema/dados da barbearia pelo slug
+// Usada pelo frontend para carregar logo, cores e nome dinamicamente
 app.get("/api/barbearia/:slug", async (req, res) => {
     const { slug } = req.params;
 
@@ -182,67 +226,157 @@ app.get("/api/barbearia/:slug", async (req, res) => {
 });
 
 // ── ARQUIVOS ESTÁTICOS ───────────────────────────────
-// express.static ANTES das rotas de página
-// Isso permite que /app.js, /style.css, /assets/ etc sejam servidos normalmente
+// Serve arquivos da pasta public/ — JS, CSS, imagens, logos das barbearias
+// Deve vir ANTES das rotas de página para que /app.js, /style.css,
+// /barbearias/pedro-loeb/logo.png etc sejam servidos corretamente
 app.use(express.static(path.join(__dirname, "../public")));
 
 // ── ROTAS DE PÁGINA POR SLUG ─────────────────────────
-// DEPOIS do static — só pega rotas que não são arquivos estáticos
+// Servem o HTML correto para cada URL de barbearia
+// Devem vir DEPOIS do express.static
 
-const slugsReservados = [
-    "auth",
-    "barbeiros",
-    "servicos",
-    "agendamentos",
-    "bloqueios",
-    "push",
-    "health",
-    "api",
-    "socket.io",
-    "favicon.ico",
-];
-
-app.get("/:slug", (req, res) => {
+// Página de agendamento do cliente — ex: /pedro-loeb
+app.get("/:slug", async (req, res) => {
     const { slug } = req.params;
 
-    // Ignora slugs reservados e arquivos com extensão (.html, .js, .css, .png etc)
+    // Ignora slugs reservados (rotas de API) e arquivos com extensão (.js, .css, .png)
     if (slugsReservados.includes(slug) || slug.includes(".")) {
         res.status(404).send("Not found");
         return;
     }
 
-    res.sendFile(path.join(__dirname, "../public/index.html"));
+    // Verifica se a barbearia existe e está ativa no banco
+    const { rows } = await pool.query(
+        "SELECT id FROM barbearias WHERE slug = $1 AND ativo = true",
+        [slug],
+    );
+
+    if (rows.length === 0) {
+        res.status(404).send("Barbearia não encontrada");
+        return;
+    }
+
+    const b = rows[0];
+    const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+
+    // Lê o index.html e injeta as meta tags
+    const indexPath = path.join(__dirname, "../public/index.html");
+    let html = require("fs").readFileSync(indexPath, "utf-8");
+
+    const metaTags = `
+    <meta property="og:title" content="${b.nome_fantasia}" />
+    <meta property="og:description" content="Agende seu horário na ${b.nome_fantasia}. Rápido e fácil!" />
+    <meta property="og:image" content="${baseUrl}${b.logo_url}" />
+    <meta property="og:url" content="${baseUrl}/${slug}" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${b.nome_fantasia}" />
+    <meta name="twitter:description" content="Agende seu horário na ${b.nome_fantasia}." />
+    <meta name="twitter:image" content="${baseUrl}${b.logo_url}" />`;
+
+    // Injeta antes do </head>
+    html = html.replace("</head>", `${metaTags}\n</head>`);
+
+    res.send(html);
 });
 
-app.get("/:slug/painel", (req, res) => {
+// Painel do barbeiro — ex: /pedro-loeb/painel
+app.get("/:slug/painel", async (req, res) => {
     const { slug } = req.params;
     if (slug.includes(".")) {
         res.status(404).send("Not found");
         return;
     }
-    res.sendFile(path.join(__dirname, "../public/painel.html"));
+
+    const { rows } = await pool.query(
+        "SELECT id FROM barbearias WHERE slug = $1 AND ativo = true",
+        [slug],
+    );
+
+    if (rows.length === 0) {
+        res.status(404).send("Barbearia não encontrada");
+        return;
+    }
+
+    const b = rows[0];
+    const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+
+    // Lê o index.html e injeta as meta tags
+    const indexPath = path.join(__dirname, "../public/index.html");
+    let html = require("fs").readFileSync(indexPath, "utf-8");
+
+    const metaTags = `
+    <meta property="og:title" content="${b.nome_fantasia}" />
+    <meta property="og:description" content="Agende seu horário na ${b.nome_fantasia}. Rápido e fácil!" />
+    <meta property="og:image" content="${baseUrl}${b.logo_url}" />
+    <meta property="og:url" content="${baseUrl}/${slug}" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${b.nome_fantasia}" />
+    <meta name="twitter:description" content="Agende seu horário na ${b.nome_fantasia}." />
+    <meta name="twitter:image" content="${baseUrl}${b.logo_url}" />`;
+
+    // Injeta antes do </head>
+    html = html.replace("</head>", `${metaTags}\n</head>`);
+
+    res.send(html);
 });
 
-app.get("/:slug/login", (req, res) => {
+// Login do barbeiro — ex: /pedro-loeb/login
+app.get("/:slug/login", async (req, res) => {
     const { slug } = req.params;
     if (slug.includes(".")) {
         res.status(404).send("Not found");
         return;
     }
-    res.sendFile(path.join(__dirname, "../public/login.html"));
+
+    const { rows } = await pool.query(
+        "SELECT id FROM barbearias WHERE slug = $1 AND ativo = true",
+        [slug],
+    );
+
+    if (rows.length === 0) {
+        res.status(404).send("Barbearia não encontrada");
+        return;
+    }
+
+    const b = rows[0];
+    const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+
+    // Lê o index.html e injeta as meta tags
+    const indexPath = path.join(__dirname, "../public/index.html");
+    let html = require("fs").readFileSync(indexPath, "utf-8");
+
+    const metaTags = `
+    <meta property="og:title" content="${b.nome_fantasia}" />
+    <meta property="og:description" content="Agende seu horário na ${b.nome_fantasia}. Rápido e fácil!" />
+    <meta property="og:image" content="${baseUrl}${b.logo_url}" />
+    <meta property="og:url" content="${baseUrl}/${slug}" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${b.nome_fantasia}" />
+    <meta name="twitter:description" content="Agende seu horário na ${b.nome_fantasia}." />
+    <meta name="twitter:image" content="${baseUrl}${b.logo_url}" />`;
+
+    // Injeta antes do </head>
+    html = html.replace("</head>", `${metaTags}\n</head>`);
+
+    res.send(html);
 });
 
-// ── VAPID ────────────────────────────────────────────
+// ── VAPID — Push Notifications ───────────────────────
+// Configuração das chaves para envio de notificações push ao barbeiro
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL!,
     process.env.VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!,
 );
 
+// ── INICIALIZAÇÃO ────────────────────────────────────
 httpServer.listen(PORT, async () => {
     console.log(`Servidor rodando na porta ${PORT}`);
-    await initDB();
-    await seedSeVazio();
+    await initDB(); // Cria tabelas se não existirem
+    await seedSeVazio(); // Popula banco se estiver vazio (apenas dev)
 });
 
 export default app;

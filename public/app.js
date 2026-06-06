@@ -13,7 +13,7 @@ let datasBloqueadas = new Set(); // datas específicas bloqueadas ex: "2026-06-2
 // ─── CALENDÁRIO CLIENTE ───────────────────────────────
 
 // ─── TEMA POR SLUG ────────────────────────────────────
-const slug = window.location.pathname.split("/")[1] || "demo";
+const slug = window.location.pathname.split("/")[1] || "";
 
 async function carregarTema() {
     try {

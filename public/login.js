@@ -5,7 +5,7 @@ const API =
         : "https://agendamento-barbearia-la36.onrender.com";
 
 // Pega o slug da URL — ex: /pedro-loeb/login → "pedro-loeb"
-const slug = window.location.pathname.split("/")[1] || "demo";
+const slug = window.location.pathname.split("/")[1] || "";
 
 // Se já está logado, redireciona para o painel do slug correto
 if (localStorage.getItem("token")) {

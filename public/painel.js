@@ -8,7 +8,7 @@ const token = localStorage.getItem("token");
 const barbeiro = JSON.parse(localStorage.getItem("barbeiro") || "null");
 
 // Pega slug da URL — painel está em /:slug/painel
-const slug = window.location.pathname.split("/")[1] || "demo";
+const slug = window.location.pathname.split("/")[1] || "";
 
 if (!token || !barbeiro) {
     window.location.href = `/${slug}/login`;

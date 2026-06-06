@@ -14,6 +14,7 @@ import bcrypt from "bcrypt";
 import bloqueiosRouter from "./routes/bloqueios";
 import pushRouter from "./routes/push";
 import webpush from "web-push";
+import fs from "fs";
 
 dotenv.config();
 
@@ -261,7 +262,7 @@ app.get("/:slug", async (req, res) => {
 
     // Lê o index.html e injeta as meta tags
     const indexPath = path.join(__dirname, "../public/index.html");
-    let html = require("fs").readFileSync(indexPath, "utf-8");
+    let html = fs.readFileSync(indexPath, "utf-8");
 
     const metaTags = `
     <meta property="og:title" content="${b.nome_fantasia}" />
@@ -303,7 +304,7 @@ app.get("/:slug/painel", async (req, res) => {
 
     // Lê o index.html e injeta as meta tags
     const indexPath = path.join(__dirname, "../public/index.html");
-    let html = require("fs").readFileSync(indexPath, "utf-8");
+    let html = fs.readFileSync(indexPath, "utf-8");
 
     const metaTags = `
     <meta property="og:title" content="${b.nome_fantasia}" />
@@ -345,7 +346,7 @@ app.get("/:slug/login", async (req, res) => {
 
     // Lê o index.html e injeta as meta tags
     const indexPath = path.join(__dirname, "../public/index.html");
-    let html = require("fs").readFileSync(indexPath, "utf-8");
+    let html = fs.readFileSync(indexPath, "utf-8");
 
     const metaTags = `
     <meta property="og:title" content="${b.nome_fantasia}" />
